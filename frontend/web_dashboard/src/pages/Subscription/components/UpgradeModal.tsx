@@ -229,4 +229,23 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({
                       onClick={onClose}
                     >
                       إلغاء
-                    </button
+                    </button>
+                    <button
+                      className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition-colors"
+                      onClick={handleSubmit}
+                      disabled={isLoading}
+                    >
+                      {isLoading ? 'جاري الترقية...' : 'تأكيد الترقية'}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </Transition.Child>
+        </div>
+      </Dialog>
+    </Transition>
+  );
+};
+
+export default UpgradeModal;
