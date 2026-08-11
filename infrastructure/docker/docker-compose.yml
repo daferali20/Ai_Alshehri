@@ -1,0 +1,172 @@
+# infrastructure/docker/docker-compose.yml
+version: '3.8'
+
+services:
+  # API Gateway
+  api-gateway:
+    build:
+      context: ../../
+      dockerfile: infrastructure/docker/Dockerfile.gateway
+    ports:
+      - "8000:8000"
+    environment:
+      - USER_SERVICE_URL=http://user-service:8001
+      - ORDER_SERVICE_URL=http://order-service:8002
+      - LIQUIDITY_SERVICE_URL=http://liquidity-service:8003
+      - AI_SERVICE_URL=http://ai-service:8004
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      - redis
+      - user-service
+      - order-service
+      - liquidity-service
+      - ai-service
+    networks:
+      - trading-network
+
+  # User Service
+  user-service:
+    build:
+      context: ../../backend/services/user_service
+      dockerfile: Dockerfile
+    environment:
+      - DATABASE_URL=postgresql://user:password@postgres/trading_db
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - trading-network
+
+  # Order Service
+  order-service:
+    build:
+      context: ../../backend/services/order_service
+      dockerfile: Dockerfile
+    environment:
+      - DATABASE_URL=postgresql://user:password@postgres/trading_db
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - BROKER_API_KEY=${BROKER_API_KEY}
+      - BROKER_API_SECRET=${BROKER_API_SECRET}
+    depends_on:
+      - postgres
+      - redis
+      - kafka
+    networks:
+      - trading-network
+
+  # Liquidity Service
+  liquidity-service:
+    build:
+      context: ../../backend/services/liquidity_service
+      dockerfile: Dockerfile
+    environment:
+      - DATABASE_URL=postgresql://user:password@postgres/trading_db
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+    depends_on:
+      - postgres
+      - redis
+      - kafka
+    networks:
+      - trading-network
+
+  # AI Engine Service
+  ai-engine:
+    build:
+      context: ../../backend/services/ai_engine
+      dockerfile: Dockerfile
+    environment:
+      - DATABASE_URL=postgresql://user:password@postgres/trading_db
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - FINNHUB_API_KEY=${FINNHUB_API_KEY}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: [gpu]
+    depends_on:
+      - postgres
+      - redis
+      - kafka
+    networks:
+      - trading-network
+
+  # Data Pipeline
+  data-pipeline:
+    build:
+      context: ../../backend/data_pipeline
+      dockerfile: Dockerfile
+    environment:
+      - DATABASE_URL=postgresql://user:password@postgres/trading_db
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - DATABENTO_API_KEY=${DATABENTO_API_KEY}
+    depends_on:
+      - postgres
+      - redis
+      - kafka
+    networks:
+      - trading-network
+
+  # PostgreSQL
+  postgres:
+    image: timescale/timescaledb:latest-pg14
+    environment:
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=trading_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - trading-network
+
+  # Redis
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - trading-network
+
+  # Kafka
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    depends_on:
+      - zookeeper
+    environment:
+      - KAFKA_BROKER_ID=1
+      - KAFKA_ZOOKEEPER_CONNECT=zookeeper:2181
+      - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092
+      - KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1
+    ports:
+      - "9092:9092"
+    networks:
+      - trading-network
+
+  # Zookeeper
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    environment:
+      - ZOOKEEPER_CLIENT_PORT=2181
+    networks:
+      - trading-network
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  trading-network:
+    driver: bridge
