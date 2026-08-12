@@ -1,11 +1,10 @@
-// frontend/web_dashboard/src/services/api/subscriptionApi.ts
+// src/services/api/subscriptionApi.ts
 import axios, { AxiosInstance, AxiosError } from 'axios';
 import { 
   UserSubscription, 
   SubscriptionTier, 
   UpgradeRequest, 
   UpgradeResponse,
-  SubscriptionError,
 } from '../../pages/Subscription/types';
 
 /**
@@ -102,14 +101,7 @@ class SubscriptionApiService {
       errorCode = data.code;
     }
 
-    const subscriptionError = new SubscriptionError(
-      errorCode,
-      errorMessage,
-      status || 500,
-      data?.details
-    );
-
-    return Promise.reject(subscriptionError);
+    return Promise.reject(new Error(errorMessage));
   }
 
   // ============================================
