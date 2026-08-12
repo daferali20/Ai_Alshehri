@@ -1,77 +1,105 @@
-// frontend/web_dashboard/src/components/SignalCard.tsx
+// src/pages/Subscription/components/PricingCard.tsx
 import React from 'react';
-import { Signal } from '../types';
-import { useAppDispatch } from '../hooks/useAppDispatch';
-import { executeOrder } from '../store/slices/tradingSlice';
+import { SubscriptionTier } from '../types';
 
-interface SignalCardProps {
-  signal: Signal;
+interface PricingCardProps {
+  tier: SubscriptionTier;
+  billingCycle: 'monthly' | 'yearly';
+  isCurrent: boolean;
+  onUpgrade: () => void;
+  isLoading?: boolean;
 }
 
-const SignalCard: React.FC<SignalCardProps> = ({ signal }) => {
-  const dispatch = useAppDispatch();
-  
-  const handleExecute = (action: 'buy' | 'sell') => {
-    dispatch(executeOrder({
-      symbol: signal.symbol,
-      action: action,
-      quantity: signal.recommendedQuantity || 100,
-      orderType: 'market',
-      signalId: signal.id,
-    }));
-  };
-
-  const getSignalColor = (type: string) => {
-    switch (type) {
-      case 'BUY':
-        return 'text-green-500';
-      case 'SELL':
-        return 'text-red-500';
-      default:
-        return 'text-yellow-500';
-    }
-  };
+const PricingCard: React.FC<PricingCardProps> = ({
+  tier,
+  billingCycle,
+  isCurrent,
+  onUpgrade,
+  isLoading = false,
+}) => {
+  const price = billingCycle === 'monthly' ? tier.price : tier.priceYearly;
 
   return (
-    <div className="bg-gray-800 rounded-lg p-4 mb-4">
-      <div className="flex justify-between items-center">
-        <div>
-          <h3 className="text-xl font-bold text-white">{signal.symbol}</h3>
-          <p className="text-sm text-gray-400">{new Date(signal.timestamp).toLocaleString()}</p>
+    <div style={{
+      background: '#1a1a2e',
+      borderRadius: '1rem',
+      padding: '1.5rem',
+      border: `2px solid ${tier.highlight ? '#f59e0b' : '#2d2d4a'}`,
+      boxShadow: tier.highlight ? '0 0 20px rgba(245, 158, 11, 0.2)' : 'none',
+      transition: 'all 0.3s ease',
+    }}>
+      {tier.badge && (
+        <div style={{ textAlign: 'center', marginBottom: '0.5rem' }}>
+          <span style={{
+            display: 'inline-block',
+            padding: '0.25rem 0.75rem',
+            borderRadius: '9999px',
+            background: '#f59e0b',
+            color: 'black',
+            fontSize: '0.75rem',
+            fontWeight: 'bold',
+          }}>{tier.badge}</span>
         </div>
-        <div className={`text-lg font-bold ${getSignalColor(signal.type)}`}>
-          {signal.type}
-        </div>
+      )}
+      <h3 style={{ textAlign: 'center', fontSize: '1.25rem', fontWeight: 'bold', color: 'white' }}>
+        {tier.name}
+      </h3>
+      <p style={{ textAlign: 'center', color: '#94a3b8', fontSize: '0.875rem' }}>{tier.nameEn}</p>
+      <p style={{ textAlign: 'center', color: '#64748b', fontSize: '0.75rem', marginTop: '0.25rem' }}>
+        {tier.description}
+      </p>
+
+      <div style={{ textAlign: 'center', marginTop: '1rem' }}>
+        <span style={{ fontSize: '2rem', fontWeight: 'bold', color: 'white' }}>${price}</span>
+        <span style={{ color: '#94a3b8', fontSize: '0.875rem' }}>
+          /{billingCycle === 'monthly' ? 'شهر' : 'سنة'}
+        </span>
       </div>
-      
-      <div className="mt-2">
-        <div className="flex justify-between text-sm text-gray-300">
-          <span>Confidence: {signal.confidence}%</span>
-          <span>Price: ${signal.currentPrice?.toFixed(2) || 'N/A'}</span>
-        </div>
-        <div className="mt-2 text-gray-400 text-sm">
-          {signal.analysis}
-        </div>
-      </div>
-      
-      <div className="mt-3 flex gap-2">
-        <button 
-          onClick={() => handleExecute('buy')}
-          className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 rounded transition-colors"
-          disabled={signal.type !== 'BUY'}
-        >
-          Execute Buy
-        </button>
-        <button 
-          onClick={() => handleExecute('sell')}
-          className="flex-1 bg-red-600 hover:bg-red-700 text-white py-2 rounded transition-colors"
-          disabled={signal.type !== 'SELL'}
-        >
-          Execute Sell
-        </button>
-      </div>
+
+      <ul style={{ marginTop: '1rem', listStyle: 'none', padding: 0 }}>
+        <li style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#cbd5e1', padding: '0.25rem 0' }}>
+          <span style={{ color: '#10b981' }}>✓</span>
+          <span>{tier.features.maxSymbols === -1 ? 'غير محدود' : tier.features.maxSymbols} سهم</span>
+        </li>
+        <li style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#cbd5e1', padding: '0.25rem 0' }}>
+          <span style={{ color: '#10b981' }}>✓</span>
+          <span>{tier.features.updateInterval === 'realtime' ? 'لحظي' : tier.features.updateInterval === 'hourly' ? 'كل ساعة' : 'يومي'}</span>
+        </li>
+        {tier.features.sentimentAnalysis && (
+          <li style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#cbd5e1', padding: '0.25rem 0' }}>
+            <span style={{ color: '#10b981' }}>✓</span>
+            <span>تحليل المشاعر</span>
+          </li>
+        )}
+        {tier.features.autoExecution && (
+          <li style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#cbd5e1', padding: '0.25rem 0' }}>
+            <span style={{ color: '#10b981' }}>✓</span>
+            <span>تنفيذ تلقائي ⚡</span>
+          </li>
+        )}
+      </ul>
+
+      <button
+        onClick={onUpgrade}
+        disabled={isCurrent || isLoading}
+        style={{
+          width: '100%',
+          marginTop: '1.5rem',
+          padding: '0.5rem',
+          borderRadius: '0.5rem',
+          border: 'none',
+          fontWeight: 'bold',
+          fontSize: '1rem',
+          cursor: isCurrent || isLoading ? 'not-allowed' : 'pointer',
+          background: isCurrent ? '#475569' : tier.color === 'gold' ? '#f59e0b' : tier.color === 'purple' ? '#8b5cf6' : tier.color === 'blue' ? '#3b82f6' : '#64748b',
+          color: 'white',
+          opacity: isCurrent ? 0.5 : 1,
+        }}
+      >
+        {isCurrent ? 'خطتك الحالية' : isLoading ? 'جاري...' : 'اختر الخطة'}
+      </button>
     </div>
   );
 };
 
-export default SignalCard;
+export default PricingCard;
