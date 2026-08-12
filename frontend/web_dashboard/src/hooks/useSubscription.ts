@@ -1,4 +1,3 @@
-// src/hooks/useSubscription.ts
 import { useState, useEffect, useCallback } from 'react';
 import { UserSubscription, SubscriptionTier, UpgradeRequest } from '../pages/Subscription/types';
 import { subscriptionApi } from '../services/api/subscriptionApi';
