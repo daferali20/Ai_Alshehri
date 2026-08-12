@@ -1,5 +1,3 @@
-// src/pages/Subscription/types.ts
-
 export interface SubscriptionFeatures {
   aiRecommendations: boolean;
   maxSymbols: number;
@@ -37,41 +35,18 @@ export interface UserSubscription {
   isActive: boolean;
   executionEnabled: boolean;
   brokerConnected: boolean;
-  brokerType?: 'alpaca' | 'interactive_brokers' | 'other';
-  remainingSymbols?: number;
 }
 
 export interface UpgradeRequest {
   tierId: string;
-  paymentMethodId?: string;
   billingCycle: 'monthly' | 'yearly';
   termsAccepted?: boolean;
   consentSignature?: string;
-  brokerData?: BrokerAPIData;
-}
-
-export interface BrokerAPIData {
-  brokerType: 'alpaca' | 'interactive_brokers' | 'other';
-  apiKey: string;
-  apiSecret: string;
-  isPaperTrading?: boolean;
+  brokerData?: any;
 }
 
 export interface UpgradeResponse {
   success: boolean;
   message: string;
   subscription: UserSubscription;
-  errors?: string[];
-}
-
-export class SubscriptionError extends Error {
-  constructor(
-    public code: string,
-    message: string,
-    public statusCode: number = 400,
-    public details?: Record<string, any>
-  ) {
-    super(message);
-    this.name = 'SubscriptionError';
-  }
 }
