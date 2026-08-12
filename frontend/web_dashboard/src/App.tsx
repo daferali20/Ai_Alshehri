@@ -1,3 +1,4 @@
+import './App.css';
 import React from 'react';
 import SubscriptionPage from './pages/Subscription/SubscriptionPage';
 
