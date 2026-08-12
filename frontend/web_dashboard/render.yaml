@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: ai-alshehri-frontend
+    runtime: node
+    rootDir: frontend/web_dashboard
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_VERSION
+        value: 20.18.0
+      - key: CI
+        value: false
