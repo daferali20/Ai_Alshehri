@@ -1,4 +1,3 @@
-// src/pages/Subscription/components/UpgradeModal.tsx
 import React, { useState } from 'react';
 import { SubscriptionTier } from '../types';
 
