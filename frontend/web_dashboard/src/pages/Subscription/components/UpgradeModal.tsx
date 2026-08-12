@@ -1,21 +1,21 @@
-// frontend/web_dashboard/src/pages/Subscription/components/UpgradeModal.tsx
+// src/pages/Subscription/components/UpgradeModal.tsx
 import React, { useState } from 'react';
-import { Dialog, Transition } from '@headlessui/react';
-import { XIcon, CheckIcon } from '@heroicons/react/solid';
 import { SubscriptionTier } from '../types';
 
 interface UpgradeModalProps {
   isOpen: boolean;
   onClose: () => void;
   tier: SubscriptionTier | null;
-  onConfirm: (tierId: string, data: any) => void;
+  onConfirm: (data: any) => void;
+  isLoading: boolean;
 }
 
 const UpgradeModal: React.FC<UpgradeModalProps> = ({
   isOpen,
   onClose,
   tier,
-  onConfirm
+  onConfirm,
+  isLoading,
 }) => {
   const [step, setStep] = useState<'consent' | 'api'>('consent');
   const [formData, setFormData] = useState({
@@ -23,228 +23,162 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({
     apiKey: '',
     apiSecret: '',
     consentSignature: '',
-    termsAccepted: false
+    termsAccepted: false,
   });
-  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = async () => {
-    setIsLoading(true);
-    try {
-      await onConfirm(tier?.id || '', formData);
-      onClose();
-    } catch (error) {
-      console.error('Error upgrading:', error);
-    } finally {
-      setIsLoading(false);
-    }
+  if (!isOpen || !tier) return null;
+
+  const handleSubmit = () => {
+    onConfirm(formData);
   };
 
-  if (!tier) return null;
-
   return (
-    <Transition show={isOpen} as={React.Fragment}>
-      <Dialog onClose={onClose} className="fixed inset-0 z-50 overflow-y-auto">
-        <div className="flex items-center justify-center min-h-screen px-4">
-          <Transition.Child
-            enter="ease-out duration-300"
-            enterFrom="opacity-0"
-            enterTo="opacity-100"
-            leave="ease-in duration-200"
-            leaveFrom="opacity-100"
-            leaveTo="opacity-0"
-          >
-            <Dialog.Overlay className="fixed inset-0 bg-black opacity-70" />
-          </Transition.Child>
-
-          <Transition.Child
-            enter="ease-out duration-300"
-            enterFrom="opacity-0 scale-95"
-            enterTo="opacity-100 scale-100"
-            leave="ease-in duration-200"
-            leaveFrom="opacity-100 scale-100"
-            leaveTo="opacity-0 scale-95"
-          >
-            <div className="relative bg-gray-800 rounded-xl max-w-2xl w-full p-6">
-              {/* Close Button */}
-              <button
-                onClick={onClose}
-                className="absolute top-4 right-4 text-gray-400 hover:text-white"
-              >
-                <XIcon className="h-6 w-6" />
-              </button>
-
-              <Dialog.Title className="text-2xl font-bold text-white mb-4">
-                تفعيل خطة {tier.name}
-              </Dialog.Title>
-
-              {tier.id === 'premium' ? (
-                // PREMIUM Modal with API Keys
-                <div className="space-y-4">
-                  {/* Step Indicator */}
-                  <div className="flex items-center gap-2">
-                    <div className={`flex-1 h-2 rounded ${step === 'consent' ? 'bg-yellow-500' : 'bg-green-500'}`} />
-                    <div className={`flex-1 h-2 rounded ${step === 'api' ? 'bg-yellow-500' : 'bg-gray-600'}`} />
-                  </div>
-
-                  {/* Step 1: Legal Consent */}
-                  {step === 'consent' && (
-                    <div className="space-y-4">
-                      <div className="bg-red-900/20 p-4 rounded-lg border border-red-500">
-                        <h4 className="text-red-500 font-bold flex items-center gap-2">
-                          ⚠️ تنبيه قانوني هام
-                        </h4>
-                        <ul className="mt-2 text-sm space-y-2 text-gray-300">
-                          <li>• أنت توافق على أن المنصة مجرد أداة تحليل وتوصيات</li>
-                          <li>• أنت تتحمل المسؤولية الكاملة عن جميع قرارات التداول</li>
-                          <li>• المنصة غير مسؤولة عن أي خسائر مالية</li>
-                          <li>• سيتم استخدام مفاتيح API الخاصة بك فقط لتنفيذ أوامرك</li>
-                          <li>• يتم تسجيل جميع الصفقات لأغراض التدقيق</li>
-                        </ul>
-                      </div>
-
-                      <div>
-                        <label className="block text-sm text-gray-400 mb-2">
-                          التوقيع الإلكتروني (اكتب اسمك الكامل للموافقة)
-                        </label>
-                        <input
-                          type="text"
-                          className="w-full bg-gray-700 rounded-lg p-3 text-white"
-                          value={formData.consentSignature}
-                          onChange={(e) => setFormData({...formData, consentSignature: e.target.value})}
-                          placeholder="أدخل اسمك الكامل"
-                        />
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          id="termsAccepted"
-                          className="w-4 h-4"
-                          checked={formData.termsAccepted}
-                          onChange={(e) => setFormData({...formData, termsAccepted: e.target.checked})}
-                        />
-                        <label htmlFor="termsAccepted" className="text-sm text-gray-400">
-                          أوافق على جميع الشروط والأحكام
-                        </label>
-                      </div>
-
-                      <button
-                        className="w-full bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-3 rounded-lg transition-colors"
-                        onClick={() => setStep('api')}
-                        disabled={!formData.consentSignature || !formData.termsAccepted}
-                      >
-                        التالي: إضافة مفاتيح API
-                      </button>
-                    </div>
-                  )}
-
-                  {/* Step 2: API Keys */}
-                  {step === 'api' && (
-                    <div className="space-y-4">
-                      <div className="text-sm text-gray-400">
-                        أضف مفاتيح API الخاصة بك من الوسيط للسماح بتنفيذ الأوامر التلقائية
-                      </div>
-
-                      <div>
-                        <label className="block text-sm text-gray-400 mb-1">نوع الوسيط</label>
-                        <select
-                          className="w-full bg-gray-700 rounded-lg p-3 text-white"
-                          value={formData.brokerType}
-                          onChange={(e) => setFormData({...formData, brokerType: e.target.value})}
-                        >
-                          <option value="alpaca">Alpaca</option>
-                          <option value="interactive_brokers">Interactive Brokers</option>
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block text-sm text-gray-400 mb-1">مفتاح API</label>
-                        <input
-                          type="password"
-                          className="w-full bg-gray-700 rounded-lg p-3 text-white"
-                          value={formData.apiKey}
-                          onChange={(e) => setFormData({...formData, apiKey: e.target.value})}
-                          placeholder="أدخل مفتاح API"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm text-gray-400 mb-1">المفتاح السري API</label>
-                        <input
-                          type="password"
-                          className="w-full bg-gray-700 rounded-lg p-3 text-white"
-                          value={formData.apiSecret}
-                          onChange={(e) => setFormData({...formData, apiSecret: e.target.value})}
-                          placeholder="أدخل المفتاح السري"
-                        />
-                      </div>
-
-                      <div className="flex gap-2">
-                        <button
-                          className="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 rounded-lg transition-colors"
-                          onClick={() => setStep('consent')}
-                        >
-                          رجوع
-                        </button>
-                        <button
-                          className="flex-1 bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-3 rounded-lg transition-colors"
-                          onClick={handleSubmit}
-                          disabled={!formData.apiKey || !formData.apiSecret || isLoading}
-                        >
-                          {isLoading ? 'جاري التفعيل...' : 'تفعيل التنفيذ التلقائي'}
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                // Non-PREMIUM Modal
-                <div className="space-y-4">
-                  <div className="text-gray-300">
-                    <p>ستتم ترقية اشتراكك إلى <strong>{tier.name}</strong>.</p>
-                    <p className="mt-2 text-sm text-gray-400">
-                      السعر: <strong>${tier.price}/شهر</strong>
-                    </p>
-                  </div>
-
-                  <div className="bg-blue-900/20 p-4 rounded-lg border border-blue-500">
-                    <p className="text-sm text-blue-300">
-                      💡 ستتضمن خطتك الجديدة الميزات التالية:
-                    </p>
-                    <ul className="mt-2 space-y-1 text-sm text-gray-300">
-                      <li>✓ {tier.features.maxSymbols === -1 ? 'أسهم غير محدودة' : `حتى ${tier.features.maxSymbols} سهم`}</li>
-                      <li>✓ تحديث {tier.features.updateInterval === 'realtime' ? 'لحظي' : tier.features.updateInterval === 'hourly' ? 'كل ساعة' : 'يومي'}</li>
-                      {tier.features.sentimentAnalysis && <li>✓ تحليل المشاعر</li>}
-                      {tier.features.lstmModel && <li>✓ نموذج LSTM</li>}
-                      {tier.features.transformerModel && <li>✓ نموذج Transformer</li>}
-                      {tier.features.advancedCharts && <li>✓ رسوم بيانية متقدمة</li>}
-                      {tier.features.pushNotifications && <li>✓ تنبيهات فورية</li>}
-                      {tier.features.customStrategies && <li>✓ استراتيجيات مخصصة</li>}
-                    </ul>
-                  </div>
-
-                  <div className="flex gap-2">
-                    <button
-                      className="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 rounded-lg transition-colors"
-                      onClick={onClose}
-                    >
-                      إلغاء
-                    </button>
-                    <button
-                      className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition-colors"
-                      onClick={handleSubmit}
-                      disabled={isLoading}
-                    >
-                      {isLoading ? 'جاري الترقية...' : 'تأكيد الترقية'}
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          </Transition.Child>
+    <div style={{
+      position: 'fixed',
+      inset: 0,
+      background: 'rgba(0,0,0,0.7)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 9999,
+      padding: '1rem',
+    }}>
+      <div style={{
+        background: '#1a1a2e',
+        borderRadius: '1rem',
+        maxWidth: '600px',
+        width: '100%',
+        padding: '1.5rem',
+        maxHeight: '90vh',
+        overflowY: 'auto',
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+          <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'white' }}>تفعيل خطة {tier.name}</h2>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: '1.5rem', cursor: 'pointer' }}>×</button>
         </div>
-      </Dialog>
-    </Transition>
+
+        {tier.id === 'premium' ? (
+          <div>
+            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
+              <div style={{ flex: 1, height: '0.5rem', borderRadius: '9999px', background: step === 'consent' ? '#f59e0b' : '#10b981' }} />
+              <div style={{ flex: 1, height: '0.5rem', borderRadius: '9999px', background: step === 'api' ? '#f59e0b' : '#334155' }} />
+            </div>
+
+            {step === 'consent' ? (
+              <div>
+                <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid #ef4444', borderRadius: '0.5rem', padding: '1rem', marginBottom: '1rem' }}>
+                  <h4 style={{ color: '#ef4444', fontWeight: 'bold' }}>⚠️ تنبيه قانوني هام</h4>
+                  <ul style={{ marginTop: '0.5rem', listStyle: 'none', padding: 0, color: '#cbd5e1', fontSize: '0.875rem' }}>
+                    <li style={{ padding: '0.25rem 0' }}>• أنت تتحمل المسؤولية الكاملة عن جميع قرارات التداول</li>
+                    <li style={{ padding: '0.25rem 0' }}>• المنصة غير مسؤولة عن أي خسائر مالية</li>
+                    <li style={{ padding: '0.25rem 0' }}>• سيتم استخدام مفاتيح API الخاصة بك فقط لتنفيذ أوامرك</li>
+                  </ul>
+                </div>
+
+                <div style={{ marginBottom: '1rem' }}>
+                  <label style={{ display: 'block', color: '#94a3b8', fontSize: '0.875rem', marginBottom: '0.25rem' }}>التوقيع الإلكتروني</label>
+                  <input
+                    type="text"
+                    style={{ width: '100%', background: '#2d2d4a', borderRadius: '0.5rem', padding: '0.75rem', color: 'white', border: 'none' }}
+                    value={formData.consentSignature}
+                    onChange={(e) => setFormData({...formData, consentSignature: e.target.value})}
+                    placeholder="اكتب اسمك الكامل"
+                  />
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
+                  <input
+                    type="checkbox"
+                    checked={formData.termsAccepted}
+                    onChange={(e) => setFormData({...formData, termsAccepted: e.target.checked})}
+                  />
+                  <label style={{ fontSize: '0.875rem', color: '#94a3b8' }}>أوافق على جميع الشروط والأحكام</label>
+                </div>
+
+                <button
+                  style={{ width: '100%', background: '#f59e0b', color: 'white', fontWeight: 'bold', padding: '0.75rem', borderRadius: '0.5rem', border: 'none', cursor: 'pointer' }}
+                  onClick={() => setStep('api')}
+                  disabled={!formData.consentSignature || !formData.termsAccepted}
+                >
+                  التالي: إضافة مفاتيح API
+                </button>
+              </div>
+            ) : (
+              <div>
+                <div style={{ marginBottom: '1rem' }}>
+                  <label style={{ display: 'block', color: '#94a3b8', fontSize: '0.875rem', marginBottom: '0.25rem' }}>نوع الوسيط</label>
+                  <select
+                    style={{ width: '100%', background: '#2d2d4a', borderRadius: '0.5rem', padding: '0.75rem', color: 'white', border: 'none' }}
+                    value={formData.brokerType}
+                    onChange={(e) => setFormData({...formData, brokerType: e.target.value})}
+                  >
+                    <option value="alpaca">Alpaca</option>
+                    <option value="interactive_brokers">Interactive Brokers</option>
+                  </select>
+                </div>
+
+                <div style={{ marginBottom: '1rem' }}>
+                  <label style={{ display: 'block', color: '#94a3b8', fontSize: '0.875rem', marginBottom: '0.25rem' }}>مفتاح API</label>
+                  <input
+                    type="password"
+                    style={{ width: '100%', background: '#2d2d4a', borderRadius: '0.5rem', padding: '0.75rem', color: 'white', border: 'none' }}
+                    value={formData.apiKey}
+                    onChange={(e) => setFormData({...formData, apiKey: e.target.value})}
+                    placeholder="أدخل مفتاح API"
+                  />
+                </div>
+
+                <div style={{ marginBottom: '1rem' }}>
+                  <label style={{ display: 'block', color: '#94a3b8', fontSize: '0.875rem', marginBottom: '0.25rem' }}>المفتاح السري</label>
+                  <input
+                    type="password"
+                    style={{ width: '100%', background: '#2d2d4a', borderRadius: '0.5rem', padding: '0.75rem', color: 'white', border: 'none' }}
+                    value={formData.apiSecret}
+                    onChange={(e) => setFormData({...formData, apiSecret: e.target.value})}
+                    placeholder="أدخل المفتاح السري"
+                  />
+                </div>
+
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <button
+                    style={{ flex: 1, background: '#475569', color: 'white', fontWeight: 'bold', padding: '0.75rem', borderRadius: '0.5rem', border: 'none', cursor: 'pointer' }}
+                    onClick={() => setStep('consent')}
+                  >
+                    رجوع
+                  </button>
+                  <button
+                    style={{ flex: 1, background: '#f59e0b', color: 'white', fontWeight: 'bold', padding: '0.75rem', borderRadius: '0.5rem', border: 'none', cursor: 'pointer' }}
+                    onClick={handleSubmit}
+                    disabled={!formData.apiKey || !formData.apiSecret || isLoading}
+                  >
+                    {isLoading ? 'جاري التفعيل...' : 'تفعيل التنفيذ التلقائي'}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div>
+            <p style={{ color: '#cbd5e1', marginBottom: '1rem' }}>ستتم ترقية اشتراكك إلى <strong>{tier.name}</strong></p>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <button
+                style={{ flex: 1, background: '#475569', color: 'white', fontWeight: 'bold', padding: '0.75rem', borderRadius: '0.5rem', border: 'none', cursor: 'pointer' }}
+                onClick={onClose}
+              >
+                إلغاء
+              </button>
+              <button
+                style={{ flex: 1, background: '#3b82f6', color: 'white', fontWeight: 'bold', padding: '0.75rem', borderRadius: '0.5rem', border: 'none', cursor: 'pointer' }}
+                onClick={() => onConfirm(formData)}
+                disabled={isLoading}
+              >
+                {isLoading ? 'جاري الترقية...' : 'تأكيد الترقية'}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
   );
 };
 
