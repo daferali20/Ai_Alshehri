@@ -1,4 +1,3 @@
-// src/pages/Subscription/SubscriptionPage.tsx
 import React, { useState } from 'react';
 import { useSubscription } from '../../hooks/useSubscription';
 import PricingCard from './components/PricingCard';
