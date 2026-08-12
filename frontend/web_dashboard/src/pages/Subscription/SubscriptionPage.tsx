@@ -1,279 +1,142 @@
-// frontend/web_dashboard/src/pages/Subscription/SubscriptionPage.tsx
-import React, { useState, useEffect } from 'react';
-import { CheckIcon, XIcon, StarIcon, CrownIcon } from '@heroicons/react/solid';
-import { useAuth } from '../../hooks/useAuth';
+// src/pages/Subscription/SubscriptionPage.tsx
+import React, { useState } from 'react';
 import { useSubscription } from '../../hooks/useSubscription';
 import PricingCard from './components/PricingCard';
-import PricingTable from './components/PricingTable';
 import UpgradeModal from './components/UpgradeModal';
-import { SubscriptionTier, TierFeatures } from './types';
 
 const SubscriptionPage: React.FC = () => {
-  const { user } = useAuth();
-  const { 
-    subscription, 
-    upgradeSubscription, 
+  const {
+    subscription,
+    availableTiers,
     loading,
-    error 
+    error,
+    isUpgrading,
+    upgradeSubscription,
   } = useSubscription();
-  
-  const [selectedTier, setSelectedTier] = useState<SubscriptionTier | null>(null);
-  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
+  const [selectedTier, setSelectedTier] = useState<any>(null);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
-  const tiers: SubscriptionTier[] = [
-    {
-      id: 'free',
-      name: 'مجاني',
-      nameEn: 'Free',
-      price: 0,
-      priceYearly: 0,
-      description: 'مثالي للبدء واستكشاف المنصة',
-      features: {
-        aiRecommendations: true,
-        maxSymbols: 3,
-        updateInterval: 'daily',
-        sentimentAnalysis: false,
-        lstmModel: false,
-        transformerModel: false,
-        advancedCharts: false,
-        pushNotifications: false,
-        autoExecution: false,
-        customStrategies: false,
-        prioritySupport: false,
-      },
-      color: 'gray',
-      popular: false,
-      highlight: false,
-      badge: null
-    },
-    {
-      id: 'basic',
-      name: 'أساسي',
-      nameEn: 'Basic',
-      price: 29,
-      priceYearly: 290,
-      description: 'للمتداولين الجادين الذين يحتاجون تحليلاً أفضل',
-      features: {
-        aiRecommendations: true,
-        maxSymbols: 10,
-        updateInterval: 'hourly',
-        sentimentAnalysis: false,
-        lstmModel: false,
-        transformerModel: false,
-        advancedCharts: true,
-        pushNotifications: false,
-        autoExecution: false,
-        customStrategies: false,
-        prioritySupport: false,
-      },
-      color: 'blue',
-      popular: true,
-      highlight: false,
-      badge: 'الأكثر طلباً'
-    },
-    {
-      id: 'pro',
-      name: 'احترافي',
-      nameEn: 'Pro',
-      price: 99,
-      priceYearly: 990,
-      description: 'للمتداولين المحترفين الذين يحتاجون تحليلاً فورياً',
-      features: {
-        aiRecommendations: true,
-        maxSymbols: 50,
-        updateInterval: 'realtime',
-        sentimentAnalysis: true,
-        lstmModel: true,
-        transformerModel: false,
-        advancedCharts: true,
-        pushNotifications: true,
-        autoExecution: false,
-        customStrategies: false,
-        prioritySupport: false,
-      },
-      color: 'purple',
-      popular: false,
-      highlight: false,
-      badge: null
-    },
-    {
-      id: 'premium',
-      name: 'مميز',
-      nameEn: 'Premium',
-      price: 299,
-      priceYearly: 2990,
-      description: 'لكل ما تحتاجه من تحليل وتنفيذ تلقائي كامل',
-      features: {
-        aiRecommendations: true,
-        maxSymbols: -1, // غير محدود
-        updateInterval: 'realtime',
-        sentimentAnalysis: true,
-        lstmModel: true,
-        transformerModel: true,
-        advancedCharts: true,
-        pushNotifications: true,
-        autoExecution: true,
-        customStrategies: true,
-        prioritySupport: true,
-      },
-      color: 'gold',
-      popular: false,
-      highlight: true,
-      badge: '👑 الأفضل',
-      specialNote: 'يتطلب إضافة مفاتيح API الخاصة بك'
-    }
-  ];
-
-  const handleUpgrade = (tier: SubscriptionTier) => {
+  const handleUpgrade = (tier: any) => {
     setSelectedTier(tier);
     if (tier.id === 'premium') {
       setShowUpgradeModal(true);
     } else {
-      upgradeSubscription(tier.id);
+      upgradeSubscription(tier.id, { billingCycle });
     }
   };
 
-  const handleBillingToggle = (cycle: 'monthly' | 'yearly') => {
-    setBillingCycle(cycle);
+  const handlePremiumUpgrade = async (data: any) => {
+    await upgradeSubscription('premium', {
+      billingCycle,
+      termsAccepted: true,
+      consentSignature: data.consentSignature,
+      brokerData: {
+        brokerType: data.brokerType,
+        apiKey: data.apiKey,
+        apiSecret: data.apiSecret,
+      },
+    });
+    setShowUpgradeModal(false);
   };
 
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#0a0a0a' }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ border: '4px solid #1a1a2e', borderTop: '4px solid #3b82f6', borderRadius: '50%', width: '3rem', height: '3rem', animation: 'spin 1s linear infinite', margin: '0 auto' }}></div>
+          <p style={{ marginTop: '1rem', color: '#94a3b8' }}>جاري تحميل البيانات...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-extrabold text-white sm:text-5xl sm:tracking-tight lg:text-6xl">
-            اختر خطتك المناسبة
-          </h1>
-          <p className="mt-4 text-xl text-gray-400 max-w-3xl mx-auto">
-            خطط مرنة تناسب جميع المستويات. التنفيذ التلقائي متاح فقط في خطة PREMIUM
-          </p>
-          
-          {/* Billing Toggle */}
-          <div className="mt-6 flex items-center justify-center gap-4">
-            <button
-              onClick={() => handleBillingToggle('monthly')}
-              className={`px-4 py-2 rounded-lg transition-colors ${
-                billingCycle === 'monthly' 
-                  ? 'bg-blue-600 text-white' 
-                  : 'bg-gray-700 text-gray-400 hover:text-white'
-              }`}
-            >
-              شهري
-            </button>
-            <button
-              onClick={() => handleBillingToggle('yearly')}
-              className={`px-4 py-2 rounded-lg transition-colors ${
-                billingCycle === 'yearly' 
-                  ? 'bg-blue-600 text-white' 
-                  : 'bg-gray-700 text-gray-400 hover:text-white'
-              }`}
-            >
-              سنوي (وفر 20%)
-            </button>
-          </div>
+    <div style={{ minHeight: '100vh', background: '#0a0a0a', padding: '3rem 1rem' }}>
+      <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+        <h1 style={{ fontSize: '2.5rem', fontWeight: 'bold', textAlign: 'center', color: 'white', marginBottom: '1rem' }}>
+          اختر خطتك المناسبة
+        </h1>
+        <p style={{ textAlign: 'center', color: '#94a3b8', marginBottom: '2rem' }}>
+          التنفيذ التلقائي متاح فقط في خطة PREMIUM
+        </p>
+
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem', marginBottom: '2rem' }}>
+          <button
+            style={{
+              padding: '0.5rem 1.5rem',
+              borderRadius: '0.5rem',
+              fontWeight: 'bold',
+              border: 'none',
+              cursor: 'pointer',
+              background: billingCycle === 'monthly' ? '#3b82f6' : '#2d2d4a',
+              color: billingCycle === 'monthly' ? 'white' : '#94a3b8',
+            }}
+            onClick={() => setBillingCycle('monthly')}
+          >
+            شهري
+          </button>
+          <button
+            style={{
+              padding: '0.5rem 1.5rem',
+              borderRadius: '0.5rem',
+              fontWeight: 'bold',
+              border: 'none',
+              cursor: 'pointer',
+              background: billingCycle === 'yearly' ? '#3b82f6' : '#2d2d4a',
+              color: billingCycle === 'yearly' ? 'white' : '#94a3b8',
+            }}
+            onClick={() => setBillingCycle('yearly')}
+          >
+            سنوي <span style={{ color: '#10b981', fontSize: '0.75rem' }}>وفر 20%</span>
+          </button>
         </div>
 
-        {/* Current Subscription Status */}
         {subscription && (
-          <div className="bg-gray-800 rounded-lg p-4 mb-8 border border-gray-700">
-            <div className="flex items-center justify-between flex-wrap gap-4">
+          <div style={{ background: '#1a1a2e', borderRadius: '0.5rem', padding: '1rem', marginBottom: '2rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
               <div>
-                <span className="text-gray-400">اشتراكك الحالي:</span>
-                <span className="text-white font-bold ml-2">
-                  {subscription.tier.toUpperCase()}
-                </span>
-                {subscription.executionEnabled && (
-                  <span className="ml-3 inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-900 text-green-300">
-                    ✅ التنفيذ التلقائي مفعل
-                  </span>
-                )}
+                <span style={{ color: '#94a3b8' }}>اشتراكك الحالي:</span>
+                <span style={{ color: 'white', fontWeight: 'bold', marginLeft: '0.5rem' }}>{subscription.tier.toUpperCase()}</span>
               </div>
-              <div className="text-sm text-gray-400">
-                ينتهي في: {new Date(subscription.endDate).toLocaleDateString('ar-EG')}
+              <div style={{ color: '#94a3b8', fontSize: '0.875rem' }}>
+                ينتهي: {new Date(subscription.endDate).toLocaleDateString('ar-EG')}
               </div>
             </div>
           </div>
         )}
 
-        {/* Pricing Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-          {tiers.map((tier) => (
+        {error && (
+          <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid #ef4444', borderRadius: '0.5rem', padding: '1rem', marginBottom: '1.5rem' }}>
+            <p style={{ color: '#ef4444' }}>{error}</p>
+          </div>
+        )}
+
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+          gap: '1.5rem',
+          marginBottom: '3rem',
+        }}>
+          {availableTiers.map((tier) => (
             <PricingCard
               key={tier.id}
               tier={tier}
               billingCycle={billingCycle}
               isCurrent={subscription?.tier === tier.id}
               onUpgrade={() => handleUpgrade(tier)}
+              isLoading={isUpgrading}
             />
           ))}
         </div>
 
-        {/* Comparison Table */}
-        <div className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-700">
-            <h2 className="text-xl font-bold text-white">
-              📊 مقارنة الميزات بالتفصيل
-            </h2>
-            <p className="text-sm text-gray-400 mt-1">
-              قارن بين جميع الخطط واختر الأنسب لك
-            </p>
-          </div>
-          
-          <PricingTable 
-            tiers={tiers} 
-            currentTier={subscription?.tier}
-            billingCycle={billingCycle}
-          />
-        </div>
-
-        {/* Legal Notice */}
-        <div className="mt-8 bg-gray-800/50 rounded-lg p-4 border border-yellow-500/30">
-          <div className="flex items-start gap-3">
-            <span className="text-yellow-500 text-xl">⚠️</span>
-            <div>
-              <p className="text-yellow-500 font-semibold">تنبيه قانوني هام</p>
-              <p className="text-sm text-gray-400 mt-1">
-                التنفيذ التلقائي للأوامر متاح فقط لمشتركي PREMIUM ويتطلب موافقة صريحة 
-                وإضافة مفاتيح API الخاصة بك. المنصة تقدم توصيات تحليلية فقط، 
-                والمستخدم يتحمل المسؤولية الكاملة عن جميع قرارات التداول.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* FAQ Section */}
-        <div className="mt-12">
-          <h3 className="text-xl font-bold text-white text-center mb-6">
-            ❓ أسئلة شائعة
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="bg-gray-800/50 rounded-lg p-4">
-              <h4 className="font-semibold text-white">هل يمكنني الترقية في أي وقت؟</h4>
-              <p className="text-sm text-gray-400 mt-1">نعم، يمكنك الترقية أو التخفيض في أي وقت. يتم تعديل الفاتورة تلقائياً.</p>
-            </div>
-            <div className="bg-gray-800/50 rounded-lg p-4">
-              <h4 className="font-semibold text-white">ماذا يحدث إذا قمت بإلغاء الاشتراك؟</h4>
-              <p className="text-sm text-gray-400 mt-1">ستفقد الميزات المدفوعة، لكن تبقى التوصيات الأساسية متاحة مجاناً.</p>
-            </div>
-            <div className="bg-gray-800/50 rounded-lg p-4">
-              <h4 className="font-semibold text-white">هل التنفيذ التلقائي آمن؟</h4>
-              <p className="text-sm text-gray-400 mt-1">نعم، يتم تشفير مفاتيح API الخاصة بك ولا يتم مشاركتها مع أي طرف ثالث.</p>
-            </div>
-            <div className="bg-gray-800/50 rounded-lg p-4">
-              <h4 className="font-semibold text-white">هل يمكنني تجربة PREMIUM؟</h4>
-              <p className="text-sm text-gray-400 mt-1">نقدم فترة تجريبية مجانية لمدة 7 أيام لخطة PREMIUM.</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Upgrade Modal */}
         <UpgradeModal
           isOpen={showUpgradeModal}
           onClose={() => setShowUpgradeModal(false)}
           tier={selectedTier}
-          onConfirm={upgradeSubscription}
+          onConfirm={handlePremiumUpgrade}
+          isLoading={isUpgrading}
         />
       </div>
     </div>
