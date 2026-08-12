@@ -1,4 +1,3 @@
-// src/App.tsx
 import React from 'react';
 import SubscriptionPage from './pages/Subscription/SubscriptionPage';
 import './App.css';
@@ -12,4 +11,3 @@ function App() {
 }
 
 export default App;
- 
