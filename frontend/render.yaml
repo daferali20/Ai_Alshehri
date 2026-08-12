@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: ai-alshehri-frontend
+    runtime: node
+    repo: https://github.com/daferali20/Ai_Alshehri
+    rootDir: frontend/web_dashboard
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_VERSION
+        value: 20.18.0
