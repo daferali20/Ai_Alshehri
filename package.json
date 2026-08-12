@@ -1,5 +1,4 @@
-# إنشاء ملف package.json
-cat > frontend/web_dashboard/package.json << 'EOF'
+
 {
   "name": "trading-advisor",
   "version": "0.1.0",
