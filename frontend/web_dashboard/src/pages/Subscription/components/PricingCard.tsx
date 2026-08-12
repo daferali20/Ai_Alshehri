@@ -1,4 +1,3 @@
-// src/pages/Subscription/components/PricingCard.tsx
 import React from 'react';
 import { SubscriptionTier } from '../types';
 
