@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import TermsAndConditions from './components/TermsAndConditions.tsx';
 import SubscriptionPage from './pages/Subscription/SubscriptionPage.tsx';
 import './App.css';
@@ -45,7 +45,7 @@ function App() {
       </nav>
 
       {/* عرض الصفحة المحددة */}
-      <main>
+      <main style={{ padding: '20px' }}>
         {activeTab === 'subscription' && <SubscriptionPage />}
         {activeTab === 'terms' && <TermsAndConditions />}
       </main>
