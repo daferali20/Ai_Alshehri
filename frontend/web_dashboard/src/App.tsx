@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import LandingPage from './pages/LandingPage';
 import SubscriptionPage from './pages/Subscription';
-import TermsAndConditions from './components/TermsAndConditions';
+import { TermsAndConditions } from './components'; // الاستيراد المباشر من مجلد components
 import './App.css';
 
 function App() {
