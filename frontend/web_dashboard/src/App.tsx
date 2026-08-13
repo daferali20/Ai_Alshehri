@@ -1,5 +1,5 @@
 import React from 'react';
-import TermsAndConditions from './components/TermsAndConditions';
+import TermsAndConditions from './TermsAndConditions';
 import SubscriptionPage from './pages/Subscription/SubscriptionPage';
 import './App.css';
 
