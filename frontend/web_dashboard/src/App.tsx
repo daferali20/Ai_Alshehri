@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import LandingPage from './pages/LandingPage';
-import SubscriptionPage from './pages/Subscription/SubscriptionPage';
+import SubscriptionPage from './pages/Subscription';
 import TermsAndConditions from './components/TermsAndConditions';
 import './App.css';
 
