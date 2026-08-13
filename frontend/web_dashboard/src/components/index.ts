@@ -1,2 +1,2 @@
-export { default as PricingCard } from './PricingCard';
-export { default as UpgradeModal } from './UpgradeModal';
+export { default as TermsAndConditions } from './TermsAndConditions';
+export { default } from './TermsAndConditions';
