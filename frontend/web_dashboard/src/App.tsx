@@ -8,11 +8,12 @@ function App() {
   const [activeTab, setActiveTab] = useState<'home' | 'subscription' | 'terms'>('home');
 
   return (
-    
+    <div className="App" style={{ minHeight: '100vh', background: '#0a0a0a', color: '#fff', fontFamily: 'sans-serif', direction: 'rtl' }}>
       
       {/* شريط التنقل العلوي */}
-      
-         setActiveTab('home')}
+      <nav style={{ display: 'flex', justifyContent: 'center', gap: '15px', padding: '15px 0', borderBottom: '1px solid #222', background: '#111' }}>
+        <button
+          onClick={() => setActiveTab('home')}
           style={{
             padding: '10px 24px',
             borderRadius: '8px',
@@ -25,9 +26,10 @@ function App() {
           }}
         >
           الرئيسية
-        
+        </button>
 
-         setActiveTab('subscription')}
+        <button
+          onClick={() => setActiveTab('subscription')}
           style={{
             padding: '10px 24px',
             borderRadius: '8px',
@@ -40,9 +42,10 @@ function App() {
           }}
         >
           خطط الاشتراكات
-        
+        </button>
 
-         setActiveTab('terms')}
+        <button
+          onClick={() => setActiveTab('terms')}
           style={{
             padding: '10px 24px',
             borderRadius: '8px',
@@ -55,19 +58,19 @@ function App() {
           }}
         >
           الشروط والأحكام
-        
-      
+        </button>
+      </nav>
 
       {/* عرض الصفحة النشطة */}
-      
+      <main style={{ padding: '20px' }}>
         {activeTab === 'home' && (
-           setActiveTab('subscription')} />
+          <LandingPage onNavigateToSubscription={() => setActiveTab('subscription')} />
         )}
-        {activeTab === 'subscription' && }
-        {activeTab === 'terms' && }
-      
+        {activeTab === 'subscription' && <SubscriptionPage />}
+        {activeTab === 'terms' && <TermsAndConditions />}
+      </main>
 
-    
+    </div>
   );
 }
 
