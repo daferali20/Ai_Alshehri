@@ -1,71 +1,128 @@
 import { useState, useEffect } from 'react';
-import { subscriptionApi, UpgradePayload } from '../services/api/subscriptionApi';
-import { Subscription, SubscriptionTier } from '../pages/Subscription/types';
+import { UserSubscription, SubscriptionTier, UpgradeRequest } from '../pages/Subscription/types';
+
+// بيانات تجريبية متوافق مع Types الخاصة بمشروعك
+const MOCK_TIERS: SubscriptionTier[] = [
+  {
+    id: 'free',
+    name: 'المجانية (FREE)',
+    nameEn: 'Free',
+    price: 0,
+    priceYearly: 0,
+    description: 'للمبتدئين لاستكشاف التحليلات',
+    color: 'gray',
+    popular: false,
+    highlight: false,
+    badge: null,
+    features: {
+      aiRecommendations: false,
+      maxSymbols: 3,
+      updateInterval: 'daily',
+      sentimentAnalysis: false,
+      lstmModel: false,
+      transformerModel: false,
+      advancedCharts: false,
+      pushNotifications: false,
+      autoExecution: false,
+      customStrategies: false,
+      prioritySupport: false,
+    },
+  },
+  {
+    id: 'pro',
+    name: 'المتقدمة (PRO)',
+    nameEn: 'Pro',
+    price: 29,
+    priceYearly: 290,
+    description: 'للمتداولين النشطين للحصول على توصيات لحظية',
+    color: 'blue',
+    popular: true,
+    highlight: true,
+    badge: 'الأكثر شعبية',
+    features: {
+      aiRecommendations: true,
+      maxSymbols: 20,
+      updateInterval: 'hourly',
+      sentimentAnalysis: true,
+      lstmModel: true,
+      transformerModel: false,
+      advancedCharts: true,
+      pushNotifications: true,
+      autoExecution: false,
+      customStrategies: false,
+      prioritySupport: false,
+    },
+  },
+  {
+    id: 'premium',
+    name: 'احترافية (PREMIUM)',
+    nameEn: 'Premium',
+    price: 79,
+    priceYearly: 790,
+    description: 'دعم كامل للتنفيذ التلقائي عبر API وأحدث نماذج الذكاء الاصطناعي',
+    color: 'gold',
+    popular: false,
+    highlight: true,
+    badge: 'التنفيذ التلقائي',
+    specialNote: 'يتطلب ربط مفاتيح API الخاصة بالوسيط',
+    features: {
+      aiRecommendations: true,
+      maxSymbols: 100,
+      updateInterval: 'realtime',
+      sentimentAnalysis: true,
+      lstmModel: true,
+      transformerModel: true,
+      advancedCharts: true,
+      pushNotifications: true,
+      autoExecution: true,
+      customStrategies: true,
+      prioritySupport: true,
+    },
+  },
+];
 
 export const useSubscription = () => {
-  const [subscription, setSubscription] = useState<Subscription | null>(null);
+  const [subscription, setSubscription] = useState<UserSubscription | null>(null);
   const [availableTiers, setAvailableTiers] = useState<SubscriptionTier[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [isUpgrading, setIsUpgrading] = useState<boolean>(false);
 
   useEffect(() => {
-    const loadSubscriptionData = async () => {
-      try {
-        setLoading(true);
-        setError(null);
+    // محاكاة جلب البيانات
+    const timer = setTimeout(() => {
+      setSubscription({
+        userId: 1,
+        tier: 'free',
+        startDate: new Date().toISOString(),
+        endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        isActive: true,
+        executionEnabled: false,
+        brokerConnected: false,
+      });
+      setAvailableTiers(MOCK_TIERS);
+      setLoading(false);
+    }, 500);
 
-        // جلب البيانات مع وضع خيار الاحتياط في حال عدم وجود backend متصل حالياً
-        const [subData, tiersData] = await Promise.all([
-          subscriptionApi.fetchCurrentSubscription().catch(() => ({
-            tier: 'free',
-            endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-          })),
-          subscriptionApi.fetchAvailableTiers().catch(() => [
-            {
-              id: 'free',
-              name: 'المجانية (FREE)',
-              priceMonthly: 0,
-              priceYearly: 0,
-              features: ['توصيات محدودة', 'تحديثات يومية', 'دعم عبر البريد'],
-            },
-            {
-              id: 'pro',
-              name: 'المتقدمة (PRO)',
-              priceMonthly: 29,
-              priceYearly: 290,
-              features: ['جميع التوصيات اللحظية', 'مؤشرات فنية متقدمة', 'تنبيهات فورية'],
-            },
-            {
-              id: 'premium',
-              name: 'احترافية (PREMIUM)',
-              priceMonthly: 79,
-              priceYearly: 790,
-              features: ['التنفيذ التلقائي عبر API', 'توصيات الذكاء الاصطناعي', 'دعم خاص 24/7'],
-            },
-          ]),
-        ]);
-
-        setSubscription(subData);
-        setAvailableTiers(tiersData);
-      } catch (err: any) {
-        setError(err.message || 'حدث خطأ أثناء تحميل بيانات الاشتراك');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadSubscriptionData();
+    return () => clearTimeout(timer);
   }, []);
 
-  const upgradeSubscription = async (tierId: string, payload: UpgradePayload) => {
+  const upgradeSubscription = async (tierId: string, payload: any) => {
+    setIsUpgrading(true);
     try {
-      setIsUpgrading(true);
-      setError(null);
-      const updatedSub = await subscriptionApi.upgradeTier(tierId, payload);
-      setSubscription(updatedSub);
+      // محاكاة الاتصال بالـ API
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      setSubscription((prev) =>
+        prev
+          ? {
+              ...prev,
+              tier: tierId,
+              executionEnabled: tierId === 'premium',
+            }
+          : null
+      );
     } catch (err: any) {
-      setError(err.message || 'تعذر إتمام عملية الترقية');
+      setError('فشلت عملية الترقية، يرجى المحاولة لاحقاً');
     } finally {
       setIsUpgrading(false);
     }
