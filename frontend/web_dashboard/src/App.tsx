@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import LandingPage from './pages/LandingPage/LandingPage';
 import SubscriptionPage from './pages/Subscription/SubscriptionPage';
-import TermsAndConditions from './components/TermsAndConditions';
+import TermsAndConditions from './components'; // <--- استيراد من المجلد مباشرة
 import './App.css';
 
 function App() {
@@ -22,7 +22,6 @@ function App() {
             color: '#fff',
             cursor: 'pointer',
             fontWeight: 'bold',
-            transition: 'all 0.2s'
           }}
         >
           الرئيسية
@@ -38,7 +37,6 @@ function App() {
             color: '#fff',
             cursor: 'pointer',
             fontWeight: 'bold',
-            transition: 'all 0.2s'
           }}
         >
           خطط الاشتراكات
@@ -54,7 +52,6 @@ function App() {
             color: '#fff',
             cursor: 'pointer',
             fontWeight: 'bold',
-            transition: 'all 0.2s'
           }}
         >
           الشروط والأحكام
