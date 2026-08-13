@@ -61,7 +61,6 @@ const PricingCard: React.FC<PricingCardProps> = ({
           </span>
         </div>
 
-        {/* عرض مميزات الخطة التفصيلية */}
         <ul style={{ listStyle: 'none', padding: 0, marginBottom: '20px', color: '#ccc', textAlign: 'right', fontSize: '0.9rem' }}>
           <li style={{ marginBottom: '8px' }}>✓ عدد الأسهم المتاحة: {tier.features.maxSymbols}</li>
           <li style={{ marginBottom: '8px' }}>✓ التحديثات: {tier.features.updateInterval}</li>
