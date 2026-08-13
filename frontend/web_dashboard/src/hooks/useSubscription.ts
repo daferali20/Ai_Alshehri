@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
-import { UserSubscription, SubscriptionTier, UpgradeRequest } from '../pages/Subscription/types';
+import { UserSubscription, SubscriptionTier } from '../pages/Subscription/types';
 
-// بيانات تجريبية متوافق مع Types الخاصة بمشروعك
 const MOCK_TIERS: SubscriptionTier[] = [
   {
     id: 'free',
@@ -89,7 +88,6 @@ export const useSubscription = () => {
   const [isUpgrading, setIsUpgrading] = useState<boolean>(false);
 
   useEffect(() => {
-    // محاكاة جلب البيانات
     const timer = setTimeout(() => {
       setSubscription({
         userId: 1,
@@ -102,7 +100,7 @@ export const useSubscription = () => {
       });
       setAvailableTiers(MOCK_TIERS);
       setLoading(false);
-    }, 500);
+    }, 400);
 
     return () => clearTimeout(timer);
   }, []);
@@ -110,8 +108,7 @@ export const useSubscription = () => {
   const upgradeSubscription = async (tierId: string, payload: any) => {
     setIsUpgrading(true);
     try {
-      // محاكاة الاتصال بالـ API
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 800));
       setSubscription((prev) =>
         prev
           ? {
