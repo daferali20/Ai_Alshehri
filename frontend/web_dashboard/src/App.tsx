@@ -1,5 +1,5 @@
 import React from 'react';
-import TermsAndConditions from './components/TermsAndConditions';
+import TermsAndConditions from './components/TermsAndConditions.tsx';
 import './App.css';
 
 function App() {
