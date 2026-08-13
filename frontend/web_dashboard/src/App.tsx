@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
-import LandingPage from './pages/LandingPage';
+import { LandingPage } from './pages/LandingPage';
 import SubscriptionPage from './pages/Subscription/SubscriptionPage';
 import TermsAndConditions from './components/TermsAndConditions';
 import './App.css';
-
 function App() {
   const [activeTab, setActiveTab] = useState<'home' | 'subscription' | 'terms'>('home');
 
