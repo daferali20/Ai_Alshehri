@@ -1,10 +1,7 @@
 import React from 'react';
-import './App.css';
-
-#import React from 'react';
 import TermsAndConditions from './components/TermsAndConditions';
 import SubscriptionPage from './pages/Subscription/SubscriptionPage';
-#import './App.css';
+import './App.css';
 
 function App() {
   return (
