@@ -16,23 +16,23 @@ const PricingCard: React.FC<PricingCardProps> = ({
   onUpgrade,
   isLoading,
 }) => {
-  const price = billingCycle === 'monthly' ? tier.priceMonthly : tier.priceYearly;
+  const currentPrice = billingCycle === 'monthly' ? tier.price : tier.priceYearly;
 
   return (
     <div
       style={{
         background: '#141414',
-        border: isCurrent ? '2px solid #3b82f6' : '1px solid #2a2a2a',
+        border: tier.highlight ? '2px solid #3b82f6' : '1px solid #2a2a2a',
         borderRadius: '12px',
         padding: '24px',
         textAlign: 'center',
         position: 'relative',
         display: 'flex',
         flexDirection: 'column',
-        justify: 'space-between',
+        justifyContent: 'space-between',
       }}
     >
-      {isCurrent && (
+      {tier.badge && (
         <span
           style={{
             position: 'absolute',
@@ -46,25 +46,29 @@ const PricingCard: React.FC<PricingCardProps> = ({
             fontWeight: 'bold',
           }}
         >
-          خطة الحالية
+          {tier.badge}
         </span>
       )}
 
       <div>
-        <h3 style={{ color: '#3b82f6', marginBottom: '10px', fontSize: '1.25rem' }}>{tier.name}</h3>
+        <h3 style={{ color: '#3b82f6', marginBottom: '8px', fontSize: '1.25rem' }}>{tier.name}</h3>
+        <p style={{ color: '#94a3b8', fontSize: '0.85rem', marginBottom: '15px' }}>{tier.description}</p>
+        
         <div style={{ fontSize: '2rem', fontWeight: 'bold', marginBottom: '15px', color: '#fff' }}>
-          ${price}
+          ${currentPrice}
           <span style={{ fontSize: '0.875rem', color: '#94a3b8' }}>
             /{billingCycle === 'monthly' ? 'شهر' : 'سنة'}
           </span>
         </div>
 
-        <ul style={{ listStyle: 'none', padding: 0, marginBottom: '20px', color: '#ccc', textAlign: 'right' }}>
-          {tier.features.map((feature, index) => (
-            <li key={index} style={{ marginBottom: '8px', fontSize: '0.95rem' }}>
-              ✓ {feature}
-            </li>
-          ))}
+        {/* عرض مميزات الخطة التفصيلية */}
+        <ul style={{ listStyle: 'none', padding: 0, marginBottom: '20px', color: '#ccc', textAlign: 'right', fontSize: '0.9rem' }}>
+          <li style={{ marginBottom: '8px' }}>✓ عدد الأسهم المتاحة: {tier.features.maxSymbols}</li>
+          <li style={{ marginBottom: '8px' }}>✓ التحديثات: {tier.features.updateInterval}</li>
+          {tier.features.aiRecommendations && <li style={{ marginBottom: '8px' }}>✓ توصيات الذكاء الاصطناعي</li>}
+          {tier.features.lstmModel && <li style={{ marginBottom: '8px' }}>✓ نموذج LSTM للتوقع</li>}
+          {tier.features.transformerModel && <li style={{ marginBottom: '8px' }}>✓ نموذج Transformer التحليلي</li>}
+          {tier.features.autoExecution && <li style={{ marginBottom: '8px', color: '#10b981', fontWeight: 'bold' }}>✓ التنفيذ التلقائي للمفهوم</li>}
         </ul>
       </div>
 
@@ -82,7 +86,7 @@ const PricingCard: React.FC<PricingCardProps> = ({
           cursor: isCurrent || isLoading ? 'not-allowed' : 'pointer',
         }}
       >
-        {isCurrent ? 'خيارات الخطة الحالية' : isLoading ? 'جاري المعالجة...' : 'ترقية الآن'}
+        {isCurrent ? 'الخطة الحالية' : isLoading ? 'جاري المعالجة...' : 'ترقية الآن'}
       </button>
     </div>
   );
