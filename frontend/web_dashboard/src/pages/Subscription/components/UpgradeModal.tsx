@@ -16,166 +16,165 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({
   onConfirm,
   isLoading,
 }) => {
-  const [step, setStep] = useState<'consent' | 'api'>('consent');
-  const [formData, setFormData] = useState({
-    brokerType: 'alpaca',
-    apiKey: '',
-    apiSecret: '',
-    consentSignature: '',
-    termsAccepted: false,
-  });
+  const [brokerType, setBrokerType] = useState('binance');
+  const [apiKey, setApiKey] = useState('');
+  const [apiSecret, setApiSecret] = useState('');
+  const [consentSignature, setConsentSignature] = useState('');
 
   if (!isOpen || !tier) return null;
 
-  const handleSubmit = () => {
-    onConfirm(formData);
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onConfirm({
+      brokerType,
+      apiKey,
+      apiSecret,
+      consentSignature,
+    });
   };
 
   return (
-    <div style={{
-      position: 'fixed',
-      inset: 0,
-      background: 'rgba(0,0,0,0.7)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 9999,
-      padding: '1rem',
-    }}>
-      <div style={{
-        background: '#1a1a2e',
-        borderRadius: '1rem',
-        maxWidth: '600px',
-        width: '100%',
-        padding: '1.5rem',
-        maxHeight: '90vh',
-        overflowY: 'auto',
-      }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-          <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'white' }}>تفعيل خطة {tier.name}</h2>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: '1.5rem', cursor: 'pointer' }}>×</button>
-        </div>
+    <div
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.75)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 1000,
+        direction: 'rtl',
+      }}
+    >
+      <div
+        style={{
+          background: '#141414',
+          border: '1px solid #2a2a2a',
+          borderRadius: '12px',
+          padding: '24px',
+          width: '100%',
+          maxWidth: '500px',
+          color: '#fff',
+        }}
+      >
+        <h2 style={{ marginBottom: '15px', color: '#3b82f6' }}>تأكيد ترقية خطة PREMIUM</h2>
+        <p style={{ fontSize: '0.9rem', color: '#ccc', marginBottom: '20px' }}>
+          تتطلب ميزة التنفيذ التلقائي ربط حساب الوسيط الخاص بك والموافقة الإلكترونية.
+        </p>
 
-        {tier.id === 'premium' ? (
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
           <div>
-            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
-              <div style={{ flex: 1, height: '0.5rem', borderRadius: '9999px', background: step === 'consent' ? '#f59e0b' : '#10b981' }} />
-              <div style={{ flex: 1, height: '0.5rem', borderRadius: '9999px', background: step === 'api' ? '#f59e0b' : '#334155' }} />
-            </div>
-
-            {step === 'consent' ? (
-              <div>
-                <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid #ef4444', borderRadius: '0.5rem', padding: '1rem', marginBottom: '1rem' }}>
-                  <h4 style={{ color: '#ef4444', fontWeight: 'bold' }}>⚠️ تنبيه قانوني هام</h4>
-                  <ul style={{ marginTop: '0.5rem', listStyle: 'none', padding: 0, color: '#cbd5e1', fontSize: '0.875rem' }}>
-                    <li style={{ padding: '0.25rem 0' }}>• أنت تتحمل المسؤولية الكاملة عن جميع قرارات التداول</li>
-                    <li style={{ padding: '0.25rem 0' }}>• المنصة غير مسؤولة عن أي خسائر مالية</li>
-                    <li style={{ padding: '0.25rem 0' }}>• سيتم استخدام مفاتيح API الخاصة بك فقط لتنفيذ أوامرك</li>
-                  </ul>
-                </div>
-
-                <div style={{ marginBottom: '1rem' }}>
-                  <label style={{ display: 'block', color: '#94a3b8', fontSize: '0.875rem', marginBottom: '0.25rem' }}>التوقيع الإلكتروني</label>
-                  <input
-                    type="text"
-                    style={{ width: '100%', background: '#2d2d4a', borderRadius: '0.5rem', padding: '0.75rem', color: 'white', border: 'none' }}
-                    value={formData.consentSignature}
-                    onChange={(e) => setFormData({...formData, consentSignature: e.target.value})}
-                    placeholder="اكتب اسمك الكامل"
-                  />
-                </div>
-
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
-                  <input
-                    type="checkbox"
-                    checked={formData.termsAccepted}
-                    onChange={(e) => setFormData({...formData, termsAccepted: e.target.checked})}
-                  />
-                  <label style={{ fontSize: '0.875rem', color: '#94a3b8' }}>أوافق على جميع الشروط والأحكام</label>
-                </div>
-
-                <button
-                  style={{ width: '100%', background: '#f59e0b', color: 'white', fontWeight: 'bold', padding: '0.75rem', borderRadius: '0.5rem', border: 'none', cursor: 'pointer' }}
-                  onClick={() => setStep('api')}
-                  disabled={!formData.consentSignature || !formData.termsAccepted}
-                >
-                  التالي: إضافة مفاتيح API
-                </button>
-              </div>
-            ) : (
-              <div>
-                <div style={{ marginBottom: '1rem' }}>
-                  <label style={{ display: 'block', color: '#94a3b8', fontSize: '0.875rem', marginBottom: '0.25rem' }}>نوع الوسيط</label>
-                  <select
-                    style={{ width: '100%', background: '#2d2d4a', borderRadius: '0.5rem', padding: '0.75rem', color: 'white', border: 'none' }}
-                    value={formData.brokerType}
-                    onChange={(e) => setFormData({...formData, brokerType: e.target.value})}
-                  >
-                    <option value="alpaca">Alpaca</option>
-                    <option value="interactive_brokers">Interactive Brokers</option>
-                  </select>
-                </div>
-
-                <div style={{ marginBottom: '1rem' }}>
-                  <label style={{ display: 'block', color: '#94a3b8', fontSize: '0.875rem', marginBottom: '0.25rem' }}>مفتاح API</label>
-                  <input
-                    type="password"
-                    style={{ width: '100%', background: '#2d2d4a', borderRadius: '0.5rem', padding: '0.75rem', color: 'white', border: 'none' }}
-                    value={formData.apiKey}
-                    onChange={(e) => setFormData({...formData, apiKey: e.target.value})}
-                    placeholder="أدخل مفتاح API"
-                  />
-                </div>
-
-                <div style={{ marginBottom: '1rem' }}>
-                  <label style={{ display: 'block', color: '#94a3b8', fontSize: '0.875rem', marginBottom: '0.25rem' }}>المفتاح السري</label>
-                  <input
-                    type="password"
-                    style={{ width: '100%', background: '#2d2d4a', borderRadius: '0.5rem', padding: '0.75rem', color: 'white', border: 'none' }}
-                    value={formData.apiSecret}
-                    onChange={(e) => setFormData({...formData, apiSecret: e.target.value})}
-                    placeholder="أدخل المفتاح السري"
-                  />
-                </div>
-
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  <button
-                    style={{ flex: 1, background: '#475569', color: 'white', fontWeight: 'bold', padding: '0.75rem', borderRadius: '0.5rem', border: 'none', cursor: 'pointer' }}
-                    onClick={() => setStep('consent')}
-                  >
-                    رجوع
-                  </button>
-                  <button
-                    style={{ flex: 1, background: '#f59e0b', color: 'white', fontWeight: 'bold', padding: '0.75rem', borderRadius: '0.5rem', border: 'none', cursor: 'pointer' }}
-                    onClick={handleSubmit}
-                    disabled={!formData.apiKey || !formData.apiSecret || isLoading}
-                  >
-                    {isLoading ? 'جاري التفعيل...' : 'تفعيل التنفيذ التلقائي'}
-                  </button>
-                </div>
-              </div>
-            )}
+            <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.85rem' }}>اختر المنصة / الوسيط:</label>
+            <select
+              value={brokerType}
+              onChange={(e) => setBrokerType(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '8px',
+                background: '#222',
+                border: '1px solid #333',
+                color: '#fff',
+                borderRadius: '6px',
+              }}
+            >
+              <option value="binance">Binance</option>
+              <option value="interactive_brokers">Interactive Brokers</option>
+              <option value="alpaca">Alpaca</option>
+            </select>
           </div>
-        ) : (
+
           <div>
-            <p style={{ color: '#cbd5e1', marginBottom: '1rem' }}>ستتم ترقية اشتراكك إلى <strong>{tier.name}</strong></p>
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <button
-                style={{ flex: 1, background: '#475569', color: 'white', fontWeight: 'bold', padding: '0.75rem', borderRadius: '0.5rem', border: 'none', cursor: 'pointer' }}
-                onClick={onClose}
-              >
-                إلغاء
-              </button>
-              <button
-                style={{ flex: 1, background: '#3b82f6', color: 'white', fontWeight: 'bold', padding: '0.75rem', borderRadius: '0.5rem', border: 'none', cursor: 'pointer' }}
-                onClick={() => onConfirm(formData)}
-                disabled={isLoading}
-              >
-                {isLoading ? 'جاري الترقية...' : 'تأكيد الترقية'}
-              </button>
-            </div>
+            <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.85rem' }}>مفتاح API Key:</label>
+            <input
+              type="text"
+              required
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '8px',
+                background: '#222',
+                border: '1px solid #333',
+                color: '#fff',
+                borderRadius: '6px',
+              }}
+            />
           </div>
-        )}
+
+          <div>
+            <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.85rem' }}>مفتاح API Secret:</label>
+            <input
+              type="password"
+              required
+              value={apiSecret}
+              onChange={(e) => setApiSecret(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '8px',
+                background: '#222',
+                border: '1px solid #333',
+                color: '#fff',
+                borderRadius: '6px',
+              }}
+            />
+          </div>
+
+          <div>
+            <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.85rem' }}>التوقيع الإلكتروني (اسمك الكامل):</label>
+            <input
+              type="text"
+              required
+              value={consentSignature}
+              onChange={(e) => setConsentSignature(e.target.value)}
+              placeholder="اكتب اسمك للموافقة"
+              style={{
+                width: '100%',
+                padding: '8px',
+                background: '#222',
+                border: '1px solid #333',
+                color: '#fff',
+                borderRadius: '6px',
+              }}
+            />
+          </div>
+
+          <div style={{ display: 'flex', gap: '10px', marginTop: '15px' }}>
+            <button
+              type="submit"
+              disabled={isLoading}
+              style={{
+                flex: 1,
+                padding: '10px',
+                background: '#3b82f6',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '6px',
+                fontWeight: 'bold',
+                cursor: 'pointer',
+              }}
+            >
+              {isLoading ? 'جاري التأكيد...' : 'تأكيد الترقية'}
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              style={{
+                flex: 1,
+                padding: '10px',
+                background: '#333',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+              }}
+            >
+              إلغاء
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );
