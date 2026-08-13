@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import LandingPage from './pages/LandingPage/LandingPage'; // استيراد الملف مباشرة برابط صريح
+import LandingPage from './pages/LandingPage';
 import SubscriptionPage from './pages/Subscription/SubscriptionPage';
-import { TermsAndConditions } from './components';
+import TermsAndConditions from './components/TermsAndConditions';
 import './App.css';
 
 function App() {
