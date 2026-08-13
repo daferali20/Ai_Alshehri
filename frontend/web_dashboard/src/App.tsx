@@ -1,8 +1,8 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
-import SubscriptionPage from './pages/Subscription/SubscriptionPage';
-import TermsAndConditions from './components/TermsAndConditions';
-import LandingPage from './pages/LandingPage'; // افترضنا وجود صفحة البداية هنا
+import SubscriptionPage from './pages/Subscription/SubscriptionPage.tsx';
+import TermsAndConditions from './components/TermsAndConditions.tsx';
+import LandingPage from './pages/LandingPage.tsx'; // افترضنا وجود صفحة البداية هنا
 import './App.css';
 
 // مكون شريط التنقل العلوي
