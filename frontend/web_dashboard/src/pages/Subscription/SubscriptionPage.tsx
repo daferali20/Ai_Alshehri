@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useSubscription } from '../../hooks/useSubscription';
+import { useSubscription } from '../../hooks/useSubscription.ts';
 import PricingCard from './components/PricingCard';
 import UpgradeModal from './components/UpgradeModal';
 
