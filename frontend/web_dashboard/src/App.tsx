@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import LandingPage from './pages/LandingPage/LandingPage';
+import LandingPage from './pages/LandingPage';
 import SubscriptionPage from './pages/Subscription/SubscriptionPage';
 import TermsAndConditions from './components/TermsAndConditions';
 import './App.css';
