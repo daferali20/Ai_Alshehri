@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useSubscription } from '../../hooks/useSubscription.ts';
-import PricingCard from './components/PricingCard';
-import UpgradeModal from './components/UpgradeModal';
+import PricingCard from './components/PricingCard.tsx';
+import UpgradeModal from './components/UpgradeModal.tsx';
 
 const SubscriptionPage: React.FC = () => {
   const {
