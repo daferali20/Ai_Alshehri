@@ -1,11 +1,11 @@
 import React from 'react';
+import SubscriptionPage from './pages/Subscription/SubscriptionPage';
 import './App.css';
 
 function App() {
   return (
-    <div className="App" style={{ padding: '20px', textAlign: 'center' }}>
-      <h1>منصة الذكاء الاصطناعي - لوحة التحكم</h1>
-      <p>مرحباً بك في لوحة تحكم Ai Alshehri</p>
+    <div className="App">
+      <SubscriptionPage />
     </div>
   );
 }
