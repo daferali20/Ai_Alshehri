@@ -18,6 +18,7 @@ from .schemas import LoginRequest, RecommendationRequest, RegisterRequest, Token
 from .security import create_access_token, decode_access_token, hash_password, verify_password
 from .technical_analysis import analyze_ohlcv
 from .screener_api import router as screener_router
+from .news_engine import get_news
 
 app = FastAPI(title=settings.APP_NAME, description='منصة تحليل وتوصيات الأسهم', version=settings.APP_VERSION)
 app.add_middleware(CORSMiddleware, allow_origins=settings.CORS_ORIGINS, allow_credentials=True, allow_methods=['*'], allow_headers=['*'])
@@ -60,8 +61,8 @@ async def login(request:LoginRequest,db:Session=Depends(get_db)):
 @app.get('/api/v1/stocks/{symbol}')
 async def stock_analysis(symbol:str,user:User=Depends(current_user)):
     try:
-        quote,history=await asyncio.gather(get_quote(symbol),get_history(symbol,260)); technical=analyze_ohlcv(history) if history else {}; liquidity=analyze_liquidity(history) if history else {}; momentum=analyze_momentum(history) if history else {}; ranking=rank_stock(technical,liquidity,momentum,quote); ai=analyze_stock(technical,liquidity,momentum,ranking,quote)
-        return {'quote':quote,'history':history,'analysis':analyze_quote(quote),'technical':technical,'liquidity':liquidity,'momentum':momentum,'ranking':ranking,'ai_analysis':ai}
+        quote,history=await asyncio.gather(get_quote(symbol),get_history(symbol,260)); technical=analyze_ohlcv(history) if history else {}; liquidity=analyze_liquidity(history) if history else {}; momentum=analyze_momentum(history) if history else {}; ranking=rank_stock(technical,liquidity,momentum,quote); ai=analyze_stock(technical,liquidity,momentum,ranking,quote); news=get_news(symbol,10)
+        return {'quote':quote,'history':history,'analysis':analyze_quote(quote),'technical':technical,'liquidity':liquidity,'momentum':momentum,'ranking':ranking,'ai_analysis':ai,'news':news}
     except MarketDataError as exc: raise HTTPException(502,str(exc)) from exc
 @app.post('/api/v1/recommendations')
 async def recommendations(request:RecommendationRequest,user:User=Depends(current_user),db:Session=Depends(get_db)):
@@ -70,8 +71,8 @@ async def recommendations(request:RecommendationRequest,user:User=Depends(curren
     results=[]
     for symbol in symbols:
         try:
-            quote,history=await asyncio.gather(get_quote(symbol),get_history(symbol,260)); technical=analyze_ohlcv(history) if history else {}; liquidity=analyze_liquidity(history) if history else {}; momentum=analyze_momentum(history) if history else {}; ranking=rank_stock(technical,liquidity,momentum,quote); ai=analyze_stock(technical,liquidity,momentum,ranking,quote)
-            results.append({'symbol':symbol,'quote':quote,'history':history,'technical':technical,'liquidity':liquidity,'momentum':momentum,'ranking':ranking,'ai_analysis':ai})
+            quote,history=await asyncio.gather(get_quote(symbol),get_history(symbol,260)); technical=analyze_ohlcv(history) if history else {}; liquidity=analyze_liquidity(history) if history else {}; momentum=analyze_momentum(history) if history else {}; ranking=rank_stock(technical,liquidity,momentum,quote); ai=analyze_stock(technical,liquidity,momentum,ranking,quote); news=get_news(symbol,10)
+            results.append({'symbol':symbol,'quote':quote,'history':history,'technical':technical,'liquidity':liquidity,'momentum':momentum,'ranking':ranking,'ai_analysis':ai,'news':news})
         except MarketDataError as exc: results.append({'symbol':symbol,'error':str(exc)})
     return {'status':'ok','tier':tier,'results':results}
 if __name__=='__main__':
