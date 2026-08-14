@@ -8,14 +8,15 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from .analysis_engine import analyze_quote
 from .config import settings
 from .database import get_db, init_db
+from .market_data import MarketDataError, get_quote
 from .models.models import SubscriptionTier, User, UserSubscription
-from .schemas import LoginRequest, RegisterRequest, RecommendationRequest, SubscriptionUpgradeRequest, TokenResponse
+from .schemas import LoginRequest, RecommendationRequest, RegisterRequest, SubscriptionUpgradeRequest, TokenResponse
 from .security import create_access_token, decode_access_token, hash_password, verify_password
 
-app = FastAPI(title=settings.APP_NAME, description="نظام التوصيات الذكي للأسهم", version=settings.APP_VERSION)
-
+app = FastAPI(title=settings.APP_NAME, description="منصة تحليل وتوصيات الأسهم", version=settings.APP_VERSION)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
@@ -23,7 +24,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 security = HTTPBearer(auto_error=False)
 
 TIERS = [
@@ -36,14 +36,14 @@ TIERS = [
 
 def current_user(credentials: HTTPAuthorizationCredentials | None = Depends(security), db: Session = Depends(get_db)) -> User:
     if not credentials:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="المصادقة مطلوبة")
+        raise HTTPException(status_code=401, detail="المصادقة مطلوبة")
     try:
         user_id = decode_access_token(credentials.credentials)
     except Exception as exc:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="رمز الدخول غير صالح") from exc
+        raise HTTPException(status_code=401, detail="رمز الدخول غير صالح") from exc
     user = db.get(User, user_id)
     if not user:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="المستخدم غير موجود")
+        raise HTTPException(status_code=401, detail="المستخدم غير موجود")
     return user
 
 
@@ -75,14 +75,7 @@ async def get_current_subscription(user: User = Depends(current_user), db: Sessi
         db.add(subscription)
         db.commit()
         db.refresh(subscription)
-    return {
-        "userId": user.id,
-        "tier": subscription.tier,
-        "startDate": subscription.start_date.isoformat(),
-        "endDate": subscription.end_date.isoformat() if subscription.end_date else None,
-        "isActive": subscription.is_active,
-        "executionEnabled": False,
-    }
+    return {"userId": user.id, "tier": subscription.tier, "startDate": subscription.start_date.isoformat(), "endDate": subscription.end_date.isoformat() if subscription.end_date else None, "isActive": subscription.is_active, "executionEnabled": False}
 
 
 @app.post("/api/v1/auth/register", response_model=TokenResponse)
@@ -124,15 +117,31 @@ async def upgrade_subscription(request: SubscriptionUpgradeRequest, user: User =
     return {"success": True, "message": f"تم تحديث الخطة إلى {tier['name']}", "subscription": {"tier": request.tier, "features": tier["features"]}}
 
 
+@app.get("/api/v1/stocks/{symbol}")
+async def stock_analysis(symbol: str, user: User = Depends(current_user)):
+    try:
+        quote = await get_quote(symbol)
+        return {"quote": quote, "analysis": analyze_quote(quote)}
+    except MarketDataError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+
 @app.post("/api/v1/recommendations")
 async def recommendations(request: RecommendationRequest, user: User = Depends(current_user), db: Session = Depends(get_db)):
     subscription = db.scalar(select(UserSubscription).where(UserSubscription.user_id == user.id))
     tier = subscription.tier if subscription else SubscriptionTier.FREE.value
     limit = next(item["features"]["maxSymbols"] for item in TIERS if item["id"] == tier)
-    symbols = [symbol.strip().upper() for symbol in request.symbols if symbol.strip()]
+    symbols = list(dict.fromkeys(symbol.strip().upper() for symbol in request.symbols if symbol.strip()))
     if limit != -1 and len(symbols) > limit:
         raise HTTPException(status_code=403, detail=f"خطتك تسمح بتحليل {limit} أسهم فقط")
-    return {"status": "accepted", "tier": tier, "symbols": symbols, "message": "محرك التوصيات جاهز لاستقبال بيانات السوق"}
+    results = []
+    for symbol in symbols:
+        try:
+            quote = await get_quote(symbol)
+            results.append({"quote": quote, "analysis": analyze_quote(quote)})
+        except MarketDataError as exc:
+            results.append({"symbol": symbol, "error": str(exc)})
+    return {"status": "ok", "tier": tier, "results": results}
 
 
 if __name__ == "__main__":
