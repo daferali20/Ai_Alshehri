@@ -1,51 +1,23 @@
-# backend/core/audit.py
-import json
-from datetime import datetime
+from __future__ import annotations
+
+from typing import Any
+
 from sqlalchemy.orm import Session
 
-class AuditLogger:
-    def __init__(self, db: Session):
-        self.db = db
-    
-    async def log_action(
-        self,
-        user_id: int,
-        action: str,
-        details: dict,
-        ip_address: str = None,
-        user_agent: str = None
-    ):
-        """تسجيل أي نشاط للمستخدم"""
-        log_entry = UserActivityLog(
-            user_id=user_id,
-            action=action,
-            details=json.dumps(details),
-            ip_address=ip_address,
-            user_agent=user_agent,
-            created_at=datetime.utcnow()
-        )
-        self.db.add(log_entry)
-        self.db.commit()
-    
-    async def log_trade_execution(
-        self,
-        user_id: int,
-        order_data: dict,
-        status: str,
-        error: str = None
-    ):
-        """تسجيل تنفيذ صفقة للتدقيق"""
-        audit_entry = ExecutionAudit(
-            user_id=user_id,
-            order_id=order_data.get("order_id"),
-            symbol=order_data.get("symbol"),
-            action=order_data.get("action"),
-            quantity=order_data.get("quantity"),
-            price=order_data.get("price"),
-            executed_at=datetime.utcnow(),
-            broker_type=order_data.get("broker_type"),
-            status=status,
-            error_message=error
-        )
-        self.db.add(audit_entry)
-        self.db.commit()
+try:
+    from ..models.models import UserActivityLog
+except ImportError:
+    from models.models import UserActivityLog
+
+
+def log_user_activity(db: Session, user_id: int | None, action: str, details: dict[str, Any] | None = None, ip_address: str | None = None, user_agent: str | None = None) -> UserActivityLog:
+    record = UserActivityLog(user_id=user_id, action=action, details=details, ip_address=ip_address, user_agent=user_agent)
+    db.add(record)
+    db.commit()
+    db.refresh(record)
+    return record
+
+
+# Backward-compatible aliases used by older services.
+log_audit_event = log_user_activity
+log_user_access = log_user_activity
