@@ -1,27 +1,38 @@
-# backend/core/encryption.py
-from cryptography.fernet import Fernet
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+from __future__ import annotations
+
 import base64
+import hashlib
 import os
 
-class EncryptionManager:
-    def __init__(self):
-        # مفتاح التشفير مشتق من كلمة مرور رئيسية
-        password = os.getenv("MASTER_ENCRYPTION_KEY")
-        salt = os.getenv("ENCRYPTION_SALT").encode()
-        
-        kdf = PBKDF2HMAC(
-            algorithm=hashes.SHA256(),
-            length=32,
-            salt=salt,
-            iterations=100000,
-        )
-        key = base64.urlsafe_b64encode(kdf.derive(password.encode()))
-        self.fernet = Fernet(key)
-    
-    def encrypt(self, data: str) -> str:
-        return self.fernet.encrypt(data.encode()).decode()
-    
-    def decrypt(self, encrypted_data: str) -> str:
-        return self.fernet.decrypt(encrypted_data.encode()).decode()
+from cryptography.fernet import Fernet, InvalidToken
+
+try:
+    from ..config import settings
+except ImportError:
+    from config import settings
+
+
+def _fernet() -> Fernet:
+    raw = settings.MASTER_ENCRYPTION_KEY
+    if raw:
+        try:
+            return Fernet(raw.encode())
+        except (ValueError, TypeError):
+            pass
+    # Development-only deterministic key derived from configuration.
+    # Production deployments should set MASTER_ENCRYPTION_KEY to a Fernet key.
+    digest = hashlib.sha256((settings.JWT_SECRET_KEY + settings.ENCRYPTION_SALT).encode()).digest()
+    return Fernet(base64.urlsafe_b64encode(digest))
+
+
+def encrypt(value: str) -> str:
+    if not isinstance(value, str):
+        raise TypeError("value must be a string")
+    return _fernet().encrypt(value.encode()).decode()
+
+
+def decrypt(value: str) -> str:
+    try:
+        return _fernet().decrypt(value.encode()).decode()
+    except (InvalidToken, ValueError, TypeError) as exc:
+        raise ValueError("Unable to decrypt value") from exc
