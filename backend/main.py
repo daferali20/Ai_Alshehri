@@ -1,47 +1,31 @@
-from fastapi import FastAPI, HTTPException
+from __future__ import annotations
+
+from datetime import datetime, timedelta, timezone
+
+from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from typing import List, Optional
-import uvicorn
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
-app = FastAPI(
-    title="Ai_Alshehri API",
-    description="نظام التوصيات الذكي للأسهم",
-    version="1.0.0"
-)
+from .config import settings
+from .database import get_db, init_db
+from .models.models import SubscriptionTier, User, UserSubscription
+from .schemas import LoginRequest, RegisterRequest, RecommendationRequest, SubscriptionUpgradeRequest, TokenResponse
+from .security import create_access_token, decode_access_token, hash_password, verify_password
 
-# CORS
+app = FastAPI(title=settings.APP_NAME, description="نظام التوصيات الذكي للأسهم", version=settings.APP_VERSION)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# ========== نماذج البيانات ==========
-class SubscriptionTier(BaseModel):
-    id: str
-    name: str
-    price: float
-    priceYearly: float
-    features: dict
+security = HTTPBearer(auto_error=False)
 
-class UserSubscription(BaseModel):
-    userId: int
-    tier: str
-    startDate: str
-    endDate: str
-    isActive: bool
-    executionEnabled: bool
-
-class UpgradeRequest(BaseModel):
-    tierId: str
-    billingCycle: str
-    termsAccepted: Optional[bool] = False
-    consentSignature: Optional[str] = None
-
-# ========== البيانات الوهمية ==========
 TIERS = [
     {"id": "free", "name": "مجاني", "price": 0, "priceYearly": 0, "features": {"maxSymbols": 3}},
     {"id": "basic", "name": "أساسي", "price": 29, "priceYearly": 290, "features": {"maxSymbols": 10}},
@@ -49,59 +33,108 @@ TIERS = [
     {"id": "premium", "name": "مميز", "price": 299, "priceYearly": 2990, "features": {"maxSymbols": -1}},
 ]
 
-CURRENT_SUBSCRIPTION = {
-    "userId": 1,
-    "tier": "free",
-    "startDate": "2026-01-01",
-    "endDate": "2026-12-31",
-    "isActive": True,
-    "executionEnabled": False
-}
 
-# ========== الـ Endpoints ==========
+def current_user(credentials: HTTPAuthorizationCredentials | None = Depends(security), db: Session = Depends(get_db)) -> User:
+    if not credentials:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="المصادقة مطلوبة")
+    try:
+        user_id = decode_access_token(credentials.credentials)
+    except Exception as exc:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="رمز الدخول غير صالح") from exc
+    user = db.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="المستخدم غير موجود")
+    return user
+
+
+@app.on_event("startup")
+def startup() -> None:
+    init_db()
+
+
 @app.get("/")
 async def root():
-    return {
-        "message": "مرحباً بك في Ai_Alshehri API",
-        "version": "1.0.0",
-        "endpoints": [
-            "/health",
-            "/api/v1/subscription/tiers",
-            "/api/v1/subscription/current",
-            "/api/v1/subscription/upgrade"
-        ]
-    }
+    return {"message": "مرحباً بك في Ai_Alshehri API", "version": settings.APP_VERSION, "service": "stock-analysis"}
+
 
 @app.get("/health")
 async def health():
-    return {"status": "healthy", "timestamp": "2026-08-12"}
+    return {"status": "healthy", "timestamp": datetime.now(timezone.utc).isoformat()}
+
 
 @app.get("/api/v1/subscription/tiers")
 async def get_tiers():
     return {"tiers": TIERS}
 
-@app.get("/api/v1/subscription/current")
-async def get_current_subscription():
-    return CURRENT_SUBSCRIPTION
 
-@app.post("/api/v1/subscription/upgrade")
-async def upgrade_subscription(request: UpgradeRequest):
-    # التحقق من وجود الخطة
-    tier = next((t for t in TIERS if t["id"] == request.tierId), None)
-    if not tier:
-        raise HTTPException(status_code=404, detail="الخطة غير موجودة")
-    
-    # تحديث الاشتراك
-    updated_subscription = CURRENT_SUBSCRIPTION.copy()
-    updated_subscription["tier"] = request.tierId
-    updated_subscription["executionEnabled"] = request.tierId == "premium"
-    
+@app.get("/api/v1/subscription/current")
+async def get_current_subscription(user: User = Depends(current_user), db: Session = Depends(get_db)):
+    subscription = db.scalar(select(UserSubscription).where(UserSubscription.user_id == user.id))
+    if not subscription:
+        subscription = UserSubscription(user_id=user.id, tier=SubscriptionTier.FREE.value, is_active=True)
+        db.add(subscription)
+        db.commit()
+        db.refresh(subscription)
     return {
-        "success": True,
-        "message": f"تمت الترقية إلى {tier['name']} بنجاح",
-        "subscription": updated_subscription
+        "userId": user.id,
+        "tier": subscription.tier,
+        "startDate": subscription.start_date.isoformat(),
+        "endDate": subscription.end_date.isoformat() if subscription.end_date else None,
+        "isActive": subscription.is_active,
+        "executionEnabled": False,
     }
 
-# ========== تشغيل الخادم ==========
+
+@app.post("/api/v1/auth/register", response_model=TokenResponse)
+async def register(request: RegisterRequest, db: Session = Depends(get_db)):
+    if not request.terms_accepted:
+        raise HTTPException(status_code=400, detail="يجب قبول الشروط والأحكام")
+    if db.scalar(select(User).where(User.email == request.email)):
+        raise HTTPException(status_code=409, detail="البريد الإلكتروني مستخدم بالفعل")
+    user = User(email=request.email, full_name=request.full_name, hashed_password=hash_password(request.password))
+    db.add(user)
+    db.flush()
+    db.add(UserSubscription(user_id=user.id, tier=SubscriptionTier.FREE.value, is_active=True))
+    db.commit()
+    return TokenResponse(access_token=create_access_token(user.id))
+
+
+@app.post("/api/v1/auth/login", response_model=TokenResponse)
+async def login(request: LoginRequest, db: Session = Depends(get_db)):
+    user = db.scalar(select(User).where(User.email == request.email))
+    if not user or not verify_password(request.password, user.hashed_password):
+        raise HTTPException(status_code=401, detail="البريد الإلكتروني أو كلمة المرور غير صحيحة")
+    return TokenResponse(access_token=create_access_token(user.id))
+
+
+@app.post("/api/v1/subscription/upgrade")
+async def upgrade_subscription(request: SubscriptionUpgradeRequest, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    tier = next((item for item in TIERS if item["id"] == request.tier), None)
+    if not tier:
+        raise HTTPException(status_code=404, detail="الخطة غير موجودة")
+    subscription = db.scalar(select(UserSubscription).where(UserSubscription.user_id == user.id))
+    if not subscription:
+        subscription = UserSubscription(user_id=user.id)
+        db.add(subscription)
+    subscription.tier = request.tier
+    subscription.is_active = True
+    subscription.start_date = datetime.now(timezone.utc).replace(tzinfo=None)
+    subscription.end_date = subscription.start_date + timedelta(days=365)
+    db.commit()
+    return {"success": True, "message": f"تم تحديث الخطة إلى {tier['name']}", "subscription": {"tier": request.tier, "features": tier["features"]}}
+
+
+@app.post("/api/v1/recommendations")
+async def recommendations(request: RecommendationRequest, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    subscription = db.scalar(select(UserSubscription).where(UserSubscription.user_id == user.id))
+    tier = subscription.tier if subscription else SubscriptionTier.FREE.value
+    limit = next(item["features"]["maxSymbols"] for item in TIERS if item["id"] == tier)
+    symbols = [symbol.strip().upper() for symbol in request.symbols if symbol.strip()]
+    if limit != -1 and len(symbols) > limit:
+        raise HTTPException(status_code=403, detail=f"خطتك تسمح بتحليل {limit} أسهم فقط")
+    return {"status": "accepted", "tier": tier, "symbols": symbols, "message": "محرك التوصيات جاهز لاستقبال بيانات السوق"}
+
+
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    import uvicorn
+    uvicorn.run("backend.main:app", host=settings.HOST, port=settings.PORT, reload=settings.DEBUG)
