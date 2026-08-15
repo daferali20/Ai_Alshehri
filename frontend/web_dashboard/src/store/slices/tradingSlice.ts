@@ -22,14 +22,15 @@ export const executeOrder = createAsyncThunk(
         },
         body: JSON.stringify(order),
       });
-      
+
       if (!response.ok) {
         throw new Error('Failed to execute order');
       }
-      
+
       return await response.json();
-    } catch (error) {
-      return rejectWithValue(error.message);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'حدث خطأ غير معروف أثناء تنفيذ الأمر';
+      return rejectWithValue(message);
     }
   }
 );
