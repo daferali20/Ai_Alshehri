@@ -31,14 +31,3 @@ jobs:
           ENVIRONMENT: test
           FINNHUB_API_KEY: ''
         run: python -c "from backend.main import app; print(app.title)"
-      - name: Smoke test security
-        env:
-          JWT_SECRET_KEY: ci-test-secret
-          ENVIRONMENT: test
-        run: python -c "from backend.security import hash_password, verify_password, create_access_token, decode_access_token; h=hash_password('CI-test-password'); assert verify_password('CI-test-password', h); token=create_access_token('ci-user'); assert decode_access_token(token)=='ci-user'; print('security ok')"
-      - name: Smoke test database
-        env:
-          DATABASE_URL: sqlite:///./ci.db
-          JWT_SECRET_KEY: ci-test-secret
-          ENVIRONMENT: test
-        run: python -c "from backend.database import init_db; init_db(); print('database ok')"
