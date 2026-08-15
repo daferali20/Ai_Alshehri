@@ -8,4 +8,4 @@ services:
     autoDeploy: true
     envVars:
       - key: REACT_APP_API_URL
-        sync: false
+        value: https://ai-alshehri.onrender.com
