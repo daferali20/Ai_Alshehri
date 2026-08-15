@@ -17,7 +17,10 @@ class Settings(BaseSettings):
     API_PREFIX: str = "/api/v1"
     HOST: str = "0.0.0.0"
     PORT: int = 8000
-    CORS_ORIGINS: list[str] = Field(default_factory=lambda: ["http://localhost:3000"])
+    CORS_ORIGINS: list[str] = Field(default_factory=lambda: [
+        "http://localhost:3000",
+        "https://ai-alshehri-2.onrender.com",
+    ])
 
     DATABASE_URL: str = "sqlite:///./ai_alshehri.db"
     DB_POOL_SIZE: int = 5
