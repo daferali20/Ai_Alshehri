@@ -59,7 +59,8 @@ async def login(request:LoginRequest,db:Session=Depends(get_db)):
     if not user or not verify_password(request.password,user.hashed_password): raise HTTPException(401,'البريد الإلكتروني أو كلمة المرور غير صحيحة')
     return TokenResponse(access_token=create_access_token(user.id))
 @app.get('/api/v1/stocks/{symbol}')
-async def stock_analysis(symbol:str,user:User=Depends(current_user)):
+async def stock_analysis(symbol:str):
+    """Read-only stock analysis endpoint used by the public dashboard."""
     try:
         quote,history=await asyncio.gather(get_quote(symbol),get_history(symbol,260)); technical=analyze_ohlcv(history) if history else {}; liquidity=analyze_liquidity(history) if history else {}; momentum=analyze_momentum(history) if history else {}; ranking=rank_stock(technical,liquidity,momentum,quote); ai=analyze_stock(technical,liquidity,momentum,ranking,quote); news=get_news(symbol,10)
         return {'quote':quote,'history':history,'analysis':analyze_quote(quote),'technical':technical,'liquidity':liquidity,'momentum':momentum,'ranking':ranking,'ai_analysis':ai,'news':news}
