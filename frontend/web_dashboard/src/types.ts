@@ -12,9 +12,10 @@ export interface Signal {
 export interface Order {
   id?: string | number;
   symbol: string;
-  side: 'BUY' | 'SELL' | string;
+  action: 'buy' | 'sell' | string;
   quantity: number;
-  type?: string;
+  orderType?: string;
+  signalId?: string | number;
   price?: number;
   status?: string;
   timestamp?: string | number | Date;
