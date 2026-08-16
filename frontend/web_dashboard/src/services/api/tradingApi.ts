@@ -1,6 +1,10 @@
 import axios from 'axios';
 
-const API_BASE = (process.env.REACT_APP_API_URL || 'https://ai-alshehri.onrender.com').replace(/\/$/, '');
+// Production backend is fixed deliberately. A stale REACT_APP_API_URL in Render
+// can otherwise point the compiled React bundle at an old/invalid API host.
+const PRODUCTION_API = 'https://ai-alshehri.onrender.com';
+const configuredApi = (process.env.REACT_APP_API_URL || '').trim().replace(/\/$/, '');
+const API_BASE = configuredApi === PRODUCTION_API ? configuredApi : PRODUCTION_API;
 
 const client = axios.create({
   baseURL: API_BASE,
@@ -10,7 +14,9 @@ const client = axios.create({
 
 client.interceptors.request.use((config) => {
   const token = localStorage.getItem('access_token');
-  if (token) config.headers.Authorization = `Bearer ${token}`;
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
   return config;
 });
 
@@ -37,14 +43,18 @@ export function getTradingApiError(error: unknown): string {
     if (error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT') {
       return 'انتهت مهلة الاتصال بخادم التحليل. قد يحتاج الخادم إلى لحظات للاستيقاظ.';
     }
+
     if (error.response) {
       const detail = error.response.data?.detail;
       return `خادم التحليل أعاد الخطأ ${error.response.status}${detail ? `: ${detail}` : ''}`;
     }
+
     if (error.request) {
-      return 'تعذر الوصول إلى خادم التحليل. تحقق من حالة الخادم أو اتصال الشبكة.';
+      return `تعذر الوصول إلى خادم التحليل (${API_BASE}). تحقق من اتصال الشبكة أو إعدادات المتصفح.`;
     }
   }
 
-  return error instanceof Error ? error.message : 'حدث خطأ غير معروف أثناء الاتصال بخادم التحليل';
+  return error instanceof Error
+    ? error.message
+    : 'حدث خطأ غير معروف أثناء الاتصال بخادم التحليل';
 }
