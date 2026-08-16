@@ -21,7 +21,22 @@ from .screener_api import router as screener_router
 from .news_engine import get_news
 
 app = FastAPI(title=settings.APP_NAME, description='منصة تحليل وتوصيات الأسهم', version=settings.APP_VERSION)
-app.add_middleware(CORSMiddleware, allow_origins=settings.CORS_ORIGINS, allow_credentials=True, allow_methods=['*'], allow_headers=['*'])
+
+# Public read-only market endpoints are consumed directly by the deployed React app.
+# Keep the explicit frontend origin and also allow the Render preview/custom frontend
+# origins supplied through CORS_ORIGINS. Credentials are enabled for authenticated
+# endpoints; no wildcard origin is used when credentials are enabled.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=list(dict.fromkeys(settings.CORS_ORIGINS + [
+        'https://ai-alshehri-2.onrender.com',
+        'https://ai-alshehri.onrender.com',
+    ])),
+    allow_credentials=True,
+    allow_methods=['*'],
+    allow_headers=['*'],
+    expose_headers=['*'],
+)
 security = HTTPBearer(auto_error=False)
 app.include_router(screener_router)
 TIERS=[{'id':'free','name':'مجاني','price':0,'priceYearly':0,'features':{'maxSymbols':3}},{'id':'basic','name':'أساسي','price':29,'priceYearly':290,'features':{'maxSymbols':10}},{'id':'pro','name':'احترافي','price':99,'priceYearly':990,'features':{'maxSymbols':50}},{'id':'premium','name':'مميز','price':299,'priceYearly':2990,'features':{'maxSymbols':-1}}]
