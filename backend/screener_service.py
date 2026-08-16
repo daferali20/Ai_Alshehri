@@ -19,13 +19,23 @@ async def screen_us_stocks(
     mode: str = "most-active",
 ) -> list[dict[str, Any]]:
     universe = list(dict.fromkeys(s.upper().strip() for s in (symbols or get_us_universe()) if s.strip()))
-    semaphore = asyncio.Semaphore(5)
+
+    # Do not scan the entire universe for every dashboard request. Render's
+    # request window is limited, and scanning 40+ symbols with two external
+    # providers per symbol can exceed the frontend timeout. Scan a bounded
+    # candidate set and return the requested number of results.
+    scan_size = min(len(universe), max(limit * 2, 20))
+    universe = universe[:scan_size]
+    semaphore = asyncio.Semaphore(8)
 
     async def scan(symbol: str) -> dict[str, Any] | None:
         async with semaphore:
             try:
-                quote, history = await asyncio.gather(get_quote(symbol), get_history(symbol, 260))
-            except (MarketDataError, ValueError, TypeError) as exc:
+                quote, history = await asyncio.gather(
+                    get_quote(symbol),
+                    get_history(symbol, 120),
+                )
+            except (MarketDataError, ValueError, TypeError):
                 return None
 
             price = quote.get("price")
