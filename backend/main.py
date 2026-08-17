@@ -74,7 +74,7 @@ async def login(request:LoginRequest,db:Session=Depends(get_db)):
 async def stock_analysis(symbol:str):
     """Read-only stock analysis endpoint used by the public dashboard."""
     try:
-        quote,history=await asyncio.gather(get_quote(symbol),get_history(symbol,260)); technical=analyze_ohlcv(history) if history else {}; liquidity=analyze_liquidity(history) if history else {}; momentum=analyze_momentum(history) if history else {}; ranking=rank_stock(technical,liquidity,momentum,quote); opportunity=calculate_opportunity(technical,liquidity,momentum,quote); ai=analyze_stock(technical,liquidity,momentum,ranking,quote); news=get_news(symbol,10)
+        quote,history=await asyncio.gather(get_quote(symbol),get_history(symbol,260)); technical=analyze_ohlcv(history) if history else {}; liquidity=analyze_liquidity(history) if history else {}; momentum=analyze_momentum(history) if history else {}; ranking=rank_stock(technical,liquidity,momentum,quote); news=get_news(symbol,10); opportunity=calculate_opportunity(technical,liquidity,momentum,quote,news=news); ai=analyze_stock(technical,liquidity,momentum,ranking,quote)
         return {'quote':quote,'history':history,'analysis':analyze_quote(quote),'technical':technical,'liquidity':liquidity,'momentum':momentum,'ranking':ranking,'opportunity':opportunity,'ai_analysis':ai,'news':news}
     except MarketDataError as exc: raise HTTPException(502,str(exc)) from exc
 @app.post('/api/v1/recommendations')
@@ -84,7 +84,7 @@ async def recommendations(request:RecommendationRequest,user:User=Depends(curren
     results=[]
     for symbol in symbols:
         try:
-            quote,history=await asyncio.gather(get_quote(symbol),get_history(symbol,260)); technical=analyze_ohlcv(history) if history else {}; liquidity=analyze_liquidity(history) if history else {}; momentum=analyze_momentum(history) if history else {}; ranking=rank_stock(technical,liquidity,momentum,quote); opportunity=calculate_opportunity(technical,liquidity,momentum,quote); ai=analyze_stock(technical,liquidity,momentum,ranking,quote); news=get_news(symbol,10)
+            quote,history=await asyncio.gather(get_quote(symbol),get_history(symbol,260)); technical=analyze_ohlcv(history) if history else {}; liquidity=analyze_liquidity(history) if history else {}; momentum=analyze_momentum(history) if history else {}; ranking=rank_stock(technical,liquidity,momentum,quote); news=get_news(symbol,10); opportunity=calculate_opportunity(technical,liquidity,momentum,quote,news=news); ai=analyze_stock(technical,liquidity,momentum,ranking,quote)
             results.append({'symbol':symbol,'quote':quote,'history':history,'technical':technical,'liquidity':liquidity,'momentum':momentum,'ranking':ranking,'opportunity':opportunity,'ai_analysis':ai,'news':news})
         except MarketDataError as exc: results.append({'symbol':symbol,'error':str(exc)})
     return {'status':'ok','tier':tier,'results':results}
