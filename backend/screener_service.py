@@ -5,6 +5,7 @@ from typing import Any
 
 from .ai_ranking import rank_stock
 from .breakout_engine import analyze_breakout
+from .advanced_liquidity_engine import analyze_advanced_liquidity
 from .liquidity_engine import analyze_liquidity, analyze_momentum
 from .market_data import MarketDataError, get_history, get_quote
 from .market_universe import get_us_universe
@@ -23,21 +24,14 @@ async def screen_us_stocks(
     universe = list(dict.fromkeys(s.upper().strip() for s in (symbols or get_us_universe()) if s.strip()))
 
     signal_modes = {"breakouts", "golden-cross", "volume-surge", "momentum", "liquidity", "opportunities"}
-    if mode in signal_modes:
-        scan_size = min(len(universe), max(limit * 4, 40))
-    else:
-        scan_size = min(len(universe), max(limit * 2, 20))
+    scan_size = min(len(universe), max(limit * 4, 40) if mode in signal_modes else max(limit * 2, 20))
     universe = universe[:scan_size]
-
     semaphore = asyncio.Semaphore(8)
 
     async def scan(symbol: str) -> dict[str, Any] | None:
         async with semaphore:
             try:
-                quote, history = await asyncio.gather(
-                    get_quote(symbol),
-                    get_history(symbol, 260),
-                )
+                quote, history = await asyncio.gather(get_quote(symbol), get_history(symbol, 260))
             except (MarketDataError, ValueError, TypeError):
                 return None
 
@@ -47,9 +41,7 @@ async def screen_us_stocks(
                 return None
             if max_price is not None and price > max_price:
                 return None
-            if min_change_percent is not None and (
-                not isinstance(change, (int, float)) or change < min_change_percent
-            ):
+            if min_change_percent is not None and (not isinstance(change, (int, float)) or change < min_change_percent):
                 return None
 
             if history:
@@ -61,6 +53,7 @@ async def screen_us_stocks(
             try:
                 technical = analyze_ohlcv(rows)
                 liquidity = analyze_liquidity(rows)
+                advanced_liquidity = analyze_advanced_liquidity(rows)
                 momentum = analyze_momentum(rows)
                 ranking = rank_stock(technical, liquidity, momentum, quote)
                 opportunity = calculate_opportunity(technical, liquidity, momentum, quote)
@@ -70,13 +63,12 @@ async def screen_us_stocks(
 
             indicators = technical.get("indicators", {})
             signals = technical.get("signals", {})
-            relative_volume = indicators.get("relative_volume20") or 0
+            relative_volume = indicators.get("relative_volume20") or advanced_liquidity.get("relative_volume") or 0
 
             if mode == "opportunities" and opportunity["score"] < min_score:
                 return None
             if mode not in signal_modes and ranking["score"] < min_score:
                 return None
-
             if mode == "breakouts" and breakout.get("score", 0) <= 0:
                 return None
             if mode == "golden-cross" and not signals.get("golden_cross"):
@@ -85,7 +77,7 @@ async def screen_us_stocks(
                 return None
             if mode == "momentum" and momentum.get("score", 0) < 60:
                 return None
-            if mode == "liquidity" and liquidity.get("score", 0) < 60:
+            if mode == "liquidity" and advanced_liquidity.get("score", 0) < 60:
                 return None
 
             return {
@@ -94,6 +86,7 @@ async def screen_us_stocks(
                 "history_points": len(history),
                 "technical": technical,
                 "liquidity": liquidity,
+                "advanced_liquidity": advanced_liquidity,
                 "momentum": momentum,
                 "ranking": ranking,
                 "opportunity": opportunity,
@@ -109,6 +102,8 @@ async def screen_us_stocks(
         results.sort(key=lambda x: x.get("quote", {}).get("volume", 0) or 0, reverse=True)
     elif mode == "breakouts":
         results.sort(key=lambda x: x.get("breakout", {}).get("score", -1), reverse=True)
+    elif mode == "liquidity":
+        results.sort(key=lambda x: x.get("advanced_liquidity", {}).get("score", -1), reverse=True)
     else:
         results.sort(key=lambda x: x.get("opportunity", {}).get("score", -1), reverse=True)
 
