@@ -20,20 +20,25 @@ async def screen_us_stocks(
 ) -> list[dict[str, Any]]:
     universe = list(dict.fromkeys(s.upper().strip() for s in (symbols or get_us_universe()) if s.strip()))
 
-    # Do not scan the entire universe for every dashboard request. Render's
-    # request window is limited, and scanning 40+ symbols with two external
-    # providers per symbol can exceed the frontend timeout. Scan a bounded
-    # candidate set and return the requested number of results.
-    scan_size = min(len(universe), max(limit * 2, 20))
+    # Signal modes need a wider universe. Previously only 2x the requested
+    # result count was scanned, which could easily produce an empty result
+    # even when a signal existed later in the universe.
+    if mode in {"breakouts", "golden-cross", "volume-surge", "momentum", "liquidity"}:
+        scan_size = min(len(universe), max(limit * 4, 40))
+    else:
+        scan_size = min(len(universe), max(limit * 2, 20))
     universe = universe[:scan_size]
+
     semaphore = asyncio.Semaphore(8)
 
     async def scan(symbol: str) -> dict[str, Any] | None:
         async with semaphore:
             try:
+                # 260 trading days are required to calculate SMA200 and to
+                # make Golden Cross detection meaningful.
                 quote, history = await asyncio.gather(
                     get_quote(symbol),
-                    get_history(symbol, 120),
+                    get_history(symbol, 260),
                 )
             except (MarketDataError, ValueError, TypeError):
                 return None
@@ -62,8 +67,13 @@ async def screen_us_stocks(
             signals = technical.get("signals", {})
             relative_volume = indicators.get("relative_volume20") or 0
 
-            if ranking["score"] < min_score:
-                return None
+            # min_score is a general ranking filter. For signal-specific modes
+            # the signal itself is the filter; otherwise a valid signal could
+            # disappear simply because its combined ranking score is lower.
+            if mode not in {"breakouts", "golden-cross", "volume-surge", "momentum", "liquidity"}:
+                if ranking["score"] < min_score:
+                    return None
+
             if mode == "breakouts" and not signals.get("breakout_60d"):
                 return None
             if mode == "golden-cross" and not signals.get("golden_cross"):
@@ -96,6 +106,12 @@ async def screen_us_stocks(
         results.sort(key=lambda x: x.get("liquidity", {}).get("score", -1), reverse=True)
     elif mode == "momentum":
         results.sort(key=lambda x: x.get("momentum", {}).get("score", -1), reverse=True)
+    elif mode == "volume-surge":
+        results.sort(key=lambda x: x.get("technical", {}).get("indicators", {}).get("relative_volume20", 0) or 0, reverse=True)
+    elif mode == "breakouts":
+        results.sort(key=lambda x: x.get("ranking", {}).get("score", -1), reverse=True)
+    elif mode == "golden-cross":
+        results.sort(key=lambda x: x.get("ranking", {}).get("score", -1), reverse=True)
     else:
         results.sort(key=lambda x: x.get("ranking", {}).get("score", -1), reverse=True)
 
