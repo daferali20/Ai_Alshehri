@@ -7,6 +7,7 @@ from .ai_ranking import rank_stock
 from .liquidity_engine import analyze_liquidity, analyze_momentum
 from .market_data import MarketDataError, get_history, get_quote
 from .market_universe import get_us_universe
+from .opportunity_engine import calculate_opportunity
 from .technical_analysis import analyze_ohlcv
 
 
@@ -20,10 +21,8 @@ async def screen_us_stocks(
 ) -> list[dict[str, Any]]:
     universe = list(dict.fromkeys(s.upper().strip() for s in (symbols or get_us_universe()) if s.strip()))
 
-    # Signal modes need a wider universe. Previously only 2x the requested
-    # result count was scanned, which could easily produce an empty result
-    # even when a signal existed later in the universe.
-    if mode in {"breakouts", "golden-cross", "volume-surge", "momentum", "liquidity"}:
+    signal_modes = {"breakouts", "golden-cross", "volume-surge", "momentum", "liquidity"}
+    if mode in signal_modes:
         scan_size = min(len(universe), max(limit * 4, 40))
     else:
         scan_size = min(len(universe), max(limit * 2, 20))
@@ -34,8 +33,6 @@ async def screen_us_stocks(
     async def scan(symbol: str) -> dict[str, Any] | None:
         async with semaphore:
             try:
-                # 260 trading days are required to calculate SMA200 and to
-                # make Golden Cross detection meaningful.
                 quote, history = await asyncio.gather(
                     get_quote(symbol),
                     get_history(symbol, 260),
@@ -60,6 +57,7 @@ async def screen_us_stocks(
                 liquidity = analyze_liquidity(rows)
                 momentum = analyze_momentum(rows)
                 ranking = rank_stock(technical, liquidity, momentum, quote)
+                opportunity = calculate_opportunity(technical, liquidity, momentum, quote)
             except (ValueError, TypeError, KeyError, IndexError):
                 return None
 
@@ -67,12 +65,8 @@ async def screen_us_stocks(
             signals = technical.get("signals", {})
             relative_volume = indicators.get("relative_volume20") or 0
 
-            # min_score is a general ranking filter. For signal-specific modes
-            # the signal itself is the filter; otherwise a valid signal could
-            # disappear simply because its combined ranking score is lower.
-            if mode not in {"breakouts", "golden-cross", "volume-surge", "momentum", "liquidity"}:
-                if ranking["score"] < min_score:
-                    return None
+            if mode not in signal_modes and ranking["score"] < min_score:
+                return None
 
             if mode == "breakouts" and not signals.get("breakout_60d"):
                 return None
@@ -93,6 +87,7 @@ async def screen_us_stocks(
                 "liquidity": liquidity,
                 "momentum": momentum,
                 "ranking": ranking,
+                "opportunity": opportunity,
             }
 
     scanned = await asyncio.gather(*(scan(symbol) for symbol in universe), return_exceptions=False)
@@ -103,16 +98,14 @@ async def screen_us_stocks(
     elif mode == "most-active":
         results.sort(key=lambda x: x.get("quote", {}).get("volume", 0) or 0, reverse=True)
     elif mode == "liquidity":
-        results.sort(key=lambda x: x.get("liquidity", {}).get("score", -1), reverse=True)
+        results.sort(key=lambda x: x.get("opportunity", {}).get("score", -1), reverse=True)
     elif mode == "momentum":
-        results.sort(key=lambda x: x.get("momentum", {}).get("score", -1), reverse=True)
+        results.sort(key=lambda x: x.get("opportunity", {}).get("score", -1), reverse=True)
     elif mode == "volume-surge":
-        results.sort(key=lambda x: x.get("technical", {}).get("indicators", {}).get("relative_volume20", 0) or 0, reverse=True)
-    elif mode == "breakouts":
-        results.sort(key=lambda x: x.get("ranking", {}).get("score", -1), reverse=True)
-    elif mode == "golden-cross":
-        results.sort(key=lambda x: x.get("ranking", {}).get("score", -1), reverse=True)
+        results.sort(key=lambda x: x.get("opportunity", {}).get("score", -1), reverse=True)
+    elif mode in {"breakouts", "golden-cross"}:
+        results.sort(key=lambda x: x.get("opportunity", {}).get("score", -1), reverse=True)
     else:
-        results.sort(key=lambda x: x.get("ranking", {}).get("score", -1), reverse=True)
+        results.sort(key=lambda x: x.get("opportunity", {}).get("score", -1), reverse=True)
 
     return results[: max(1, min(limit, 100))]
