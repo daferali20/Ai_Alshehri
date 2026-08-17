@@ -9,11 +9,11 @@ class OpportunityEngineTests(unittest.TestCase):
     def setUp(self) -> None:
         self.technical = {
             "price": 100,
-            "technical_score": 80,
+            "technical_score": 90,
             "indicators": {
-                "relative_volume20": 2.0,
-                "high52": 110,
-                "low52": 70,
+                "relative_volume20": 3.0,
+                "high52": 105,
+                "low52": 50,
                 "rsi14": 60,
             },
             "signals": {
@@ -21,8 +21,8 @@ class OpportunityEngineTests(unittest.TestCase):
                 "golden_cross": True,
             },
         }
-        self.liquidity = {"score": 90}
-        self.momentum = {"score": 80}
+        self.liquidity = {"score": 95}
+        self.momentum = {"score": 90}
         self.quote = {"price": 100}
 
     def test_score_is_between_zero_and_hundred(self) -> None:
