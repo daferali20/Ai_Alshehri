@@ -21,7 +21,7 @@ async def screen_us_stocks(
 ) -> list[dict[str, Any]]:
     universe = list(dict.fromkeys(s.upper().strip() for s in (symbols or get_us_universe()) if s.strip()))
 
-    signal_modes = {"breakouts", "golden-cross", "volume-surge", "momentum", "liquidity"}
+    signal_modes = {"breakouts", "golden-cross", "volume-surge", "momentum", "liquidity", "opportunities"}
     if mode in signal_modes:
         scan_size = min(len(universe), max(limit * 4, 40))
     else:
@@ -51,6 +51,13 @@ async def screen_us_stocks(
             ):
                 return None
 
+            # Finnhub quote does not expose volume in the quote endpoint.
+            # Use the latest historical bar so Most Active remains meaningful.
+            if history:
+                latest_volume = history[-1].get("volume")
+                if isinstance(latest_volume, (int, float)) and latest_volume >= 0:
+                    quote = {**quote, "volume": latest_volume}
+
             rows = history or [{"close": price, "volume": quote.get("volume", 0) or 0}]
             try:
                 technical = analyze_ohlcv(rows)
@@ -65,6 +72,8 @@ async def screen_us_stocks(
             signals = technical.get("signals", {})
             relative_volume = indicators.get("relative_volume20") or 0
 
+            if mode == "opportunities" and opportunity["score"] < min_score:
+                return None
             if mode not in signal_modes and ranking["score"] < min_score:
                 return None
 
@@ -97,14 +106,6 @@ async def screen_us_stocks(
         results.sort(key=lambda x: x.get("quote", {}).get("change_percent", -10**9), reverse=True)
     elif mode == "most-active":
         results.sort(key=lambda x: x.get("quote", {}).get("volume", 0) or 0, reverse=True)
-    elif mode == "liquidity":
-        results.sort(key=lambda x: x.get("opportunity", {}).get("score", -1), reverse=True)
-    elif mode == "momentum":
-        results.sort(key=lambda x: x.get("opportunity", {}).get("score", -1), reverse=True)
-    elif mode == "volume-surge":
-        results.sort(key=lambda x: x.get("opportunity", {}).get("score", -1), reverse=True)
-    elif mode in {"breakouts", "golden-cross"}:
-        results.sort(key=lambda x: x.get("opportunity", {}).get("score", -1), reverse=True)
     else:
         results.sort(key=lambda x: x.get("opportunity", {}).get("score", -1), reverse=True)
 
