@@ -4,6 +4,7 @@ import asyncio
 from typing import Any
 
 from .ai_ranking import rank_stock
+from .breakout_engine import analyze_breakout
 from .liquidity_engine import analyze_liquidity, analyze_momentum
 from .market_data import MarketDataError, get_history, get_quote
 from .market_universe import get_us_universe
@@ -51,8 +52,6 @@ async def screen_us_stocks(
             ):
                 return None
 
-            # Finnhub quote does not expose volume in the quote endpoint.
-            # Use the latest historical bar so Most Active remains meaningful.
             if history:
                 latest_volume = history[-1].get("volume")
                 if isinstance(latest_volume, (int, float)) and latest_volume >= 0:
@@ -65,6 +64,7 @@ async def screen_us_stocks(
                 momentum = analyze_momentum(rows)
                 ranking = rank_stock(technical, liquidity, momentum, quote)
                 opportunity = calculate_opportunity(technical, liquidity, momentum, quote)
+                breakout = analyze_breakout(rows)
             except (ValueError, TypeError, KeyError, IndexError):
                 return None
 
@@ -77,7 +77,7 @@ async def screen_us_stocks(
             if mode not in signal_modes and ranking["score"] < min_score:
                 return None
 
-            if mode == "breakouts" and not signals.get("breakout_60d"):
+            if mode == "breakouts" and breakout.get("score", 0) <= 0:
                 return None
             if mode == "golden-cross" and not signals.get("golden_cross"):
                 return None
@@ -97,6 +97,7 @@ async def screen_us_stocks(
                 "momentum": momentum,
                 "ranking": ranking,
                 "opportunity": opportunity,
+                "breakout": breakout,
             }
 
     scanned = await asyncio.gather(*(scan(symbol) for symbol in universe), return_exceptions=False)
@@ -106,6 +107,8 @@ async def screen_us_stocks(
         results.sort(key=lambda x: x.get("quote", {}).get("change_percent", -10**9), reverse=True)
     elif mode == "most-active":
         results.sort(key=lambda x: x.get("quote", {}).get("volume", 0) or 0, reverse=True)
+    elif mode == "breakouts":
+        results.sort(key=lambda x: x.get("breakout", {}).get("score", -1), reverse=True)
     else:
         results.sort(key=lambda x: x.get("opportunity", {}).get("score", -1), reverse=True)
 
