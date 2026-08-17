@@ -17,6 +17,9 @@ from .models.models import SubscriptionTier, User, UserSubscription
 from .schemas import LoginRequest, RecommendationRequest, RegisterRequest, TokenResponse
 from .security import create_access_token, decode_access_token, hash_password, verify_password
 from .technical_analysis import analyze_ohlcv
+from .breakout_engine import analyze_breakout
+from .golden_cross_engine import analyze_golden_cross
+from .advanced_liquidity_engine import analyze_advanced_liquidity
 from .opportunity_engine import calculate_opportunity
 from .screener_api import router as screener_router
 from .news_engine import get_news
@@ -74,8 +77,29 @@ async def login(request:LoginRequest,db:Session=Depends(get_db)):
 async def stock_analysis(symbol:str):
     """Read-only stock analysis endpoint used by the public dashboard."""
     try:
-        quote,history=await asyncio.gather(get_quote(symbol),get_history(symbol,260)); technical=analyze_ohlcv(history) if history else {}; liquidity=analyze_liquidity(history) if history else {}; momentum=analyze_momentum(history) if history else {}; ranking=rank_stock(technical,liquidity,momentum,quote); news=get_news(symbol,10); opportunity=calculate_opportunity(technical,liquidity,momentum,quote,news=news); ai=analyze_stock(technical,liquidity,momentum,ranking,quote)
-        return {'quote':quote,'history':history,'analysis':analyze_quote(quote),'technical':technical,'liquidity':liquidity,'momentum':momentum,'ranking':ranking,'opportunity':opportunity,'ai_analysis':ai,'news':news}
+        symbol = symbol.strip().upper()
+        quote,history=await asyncio.gather(get_quote(symbol),get_history(symbol,260))
+        technical=analyze_ohlcv(history) if history else {}
+        liquidity=analyze_liquidity(history) if history else {}
+        momentum=analyze_momentum(history) if history else {}
+        breakout=analyze_breakout(history) if history else {}
+        golden_cross=analyze_golden_cross(history) if history else {}
+        advanced_liquidity=analyze_advanced_liquidity(history) if history else {}
+        ranking=rank_stock(technical,liquidity,momentum,quote)
+        news=get_news(symbol,10)
+        opportunity=calculate_opportunity(
+            technical, liquidity, momentum, quote,
+            breakout=breakout,
+            golden_cross=golden_cross,
+            advanced_liquidity=advanced_liquidity,
+            news=news,
+        )
+        ai=analyze_stock(
+            technical,liquidity,momentum,ranking,quote,
+            opportunity=opportunity,
+            news=news,
+        )
+        return {'quote':quote,'history':history,'analysis':analyze_quote(quote),'technical':technical,'liquidity':liquidity,'advanced_liquidity':advanced_liquidity,'momentum':momentum,'breakout':breakout,'golden_cross':golden_cross,'ranking':ranking,'opportunity':opportunity,'ai_analysis':ai,'news':news}
     except MarketDataError as exc: raise HTTPException(502,str(exc)) from exc
 @app.post('/api/v1/recommendations')
 async def recommendations(request:RecommendationRequest,user:User=Depends(current_user),db:Session=Depends(get_db)):
@@ -84,8 +108,18 @@ async def recommendations(request:RecommendationRequest,user:User=Depends(curren
     results=[]
     for symbol in symbols:
         try:
-            quote,history=await asyncio.gather(get_quote(symbol),get_history(symbol,260)); technical=analyze_ohlcv(history) if history else {}; liquidity=analyze_liquidity(history) if history else {}; momentum=analyze_momentum(history) if history else {}; ranking=rank_stock(technical,liquidity,momentum,quote); news=get_news(symbol,10); opportunity=calculate_opportunity(technical,liquidity,momentum,quote,news=news); ai=analyze_stock(technical,liquidity,momentum,ranking,quote)
-            results.append({'symbol':symbol,'quote':quote,'history':history,'technical':technical,'liquidity':liquidity,'momentum':momentum,'ranking':ranking,'opportunity':opportunity,'ai_analysis':ai,'news':news})
+            quote,history=await asyncio.gather(get_quote(symbol),get_history(symbol,260))
+            technical=analyze_ohlcv(history) if history else {}
+            liquidity=analyze_liquidity(history) if history else {}
+            momentum=analyze_momentum(history) if history else {}
+            breakout=analyze_breakout(history) if history else {}
+            golden_cross=analyze_golden_cross(history) if history else {}
+            advanced_liquidity=analyze_advanced_liquidity(history) if history else {}
+            ranking=rank_stock(technical,liquidity,momentum,quote)
+            news=get_news(symbol,10)
+            opportunity=calculate_opportunity(technical,liquidity,momentum,quote,breakout=breakout,golden_cross=golden_cross,advanced_liquidity=advanced_liquidity,news=news)
+            ai=analyze_stock(technical,liquidity,momentum,ranking,quote,opportunity=opportunity,news=news)
+            results.append({'symbol':symbol,'quote':quote,'history':history,'technical':technical,'liquidity':liquidity,'advanced_liquidity':advanced_liquidity,'momentum':momentum,'breakout':breakout,'golden_cross':golden_cross,'ranking':ranking,'opportunity':opportunity,'ai_analysis':ai,'news':news})
         except MarketDataError as exc: results.append({'symbol':symbol,'error':str(exc)})
     return {'status':'ok','tier':tier,'results':results}
 if __name__=='__main__':
