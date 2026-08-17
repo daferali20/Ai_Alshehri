@@ -60,22 +60,7 @@ async def screen_us_stocks(
                 return None
 
             indicators = technical.get("indicators", {})
-            signals = technical.get("signals", {})
             relative_volume = indicators.get("relative_volume20") or advanced_liquidity.get("relative_volume") or 0
-            if mode == "opportunities" and opportunity["score"] < min_score:
-                return None
-            if mode not in signal_modes and ranking["score"] < min_score:
-                return None
-            if mode == "breakouts" and breakout.get("score", 0) <= 0:
-                return None
-            if mode == "golden-cross" and golden_cross.get("score", 0) < max(min_score, 50):
-                return None
-            if mode == "volume-surge" and relative_volume < 1.5:
-                return None
-            if mode == "momentum" and momentum.get("score", 0) < 60:
-                return None
-            if mode == "liquidity" and advanced_liquidity.get("score", 0) < 60:
-                return None
             return {
                 "symbol": symbol,
                 "quote": quote,
@@ -88,20 +73,70 @@ async def screen_us_stocks(
                 "opportunity": opportunity,
                 "breakout": breakout,
                 "golden_cross": golden_cross,
+                "_relative_volume": relative_volume,
             }
 
     scanned = await asyncio.gather(*(scan(symbol) for symbol in universe), return_exceptions=False)
-    results = [item for item in scanned if item is not None]
-    if mode == "top-gainers":
-        results.sort(key=lambda x: x.get("quote", {}).get("change_percent", -10**9), reverse=True)
-    elif mode == "most-active":
-        results.sort(key=lambda x: x.get("quote", {}).get("volume", 0) or 0, reverse=True)
+    all_results = [item for item in scanned if item is not None]
+
+    # Apply the requested mode after the complete scan so that a strict filter
+    # cannot accidentally return an empty page just because the first batch
+    # contained no qualifying symbols.
+    results: list[dict[str, Any]]
+    if mode == "opportunities":
+        results = [x for x in all_results if x["opportunity"]["score"] >= min_score]
+        results.sort(key=lambda x: x["opportunity"]["score"], reverse=True)
     elif mode == "breakouts":
-        results.sort(key=lambda x: x.get("breakout", {}).get("score", -1), reverse=True)
+        results = [x for x in all_results if x["breakout"].get("score", 0) > 0]
+        results.sort(key=lambda x: x["breakout"].get("score", -1), reverse=True)
     elif mode == "golden-cross":
-        results.sort(key=lambda x: x.get("golden_cross", {}).get("score", -1), reverse=True)
+        # Include developing setups as well as confirmed crosses. A market may
+        # have no fresh cross today, but there can still be strong SMA50/SMA200
+        # setups worth displaying.
+        results = [x for x in all_results if x["golden_cross"].get("score", 0) >= max(min_score, 40)]
+        results.sort(key=lambda x: x["golden_cross"].get("score", -1), reverse=True)
+    elif mode == "volume-surge":
+        results = [x for x in all_results if x.get("_relative_volume", 0) >= 1.0]
+        results.sort(key=lambda x: x.get("_relative_volume", 0), reverse=True)
+    elif mode == "momentum":
+        results = [x for x in all_results if x["momentum"].get("score", 0) >= max(min_score, 50)]
+        results.sort(key=lambda x: x["momentum"].get("score", -1), reverse=True)
     elif mode == "liquidity":
-        results.sort(key=lambda x: x.get("advanced_liquidity", {}).get("score", -1), reverse=True)
+        results = [x for x in all_results if x["advanced_liquidity"].get("score", 0) >= max(min_score, 50)]
+        results.sort(key=lambda x: x["advanced_liquidity"].get("score", -1), reverse=True)
+    elif mode == "top-gainers":
+        results = [x for x in all_results if x.get("quote", {}).get("change_percent") is not None]
+        results.sort(key=lambda x: x.get("quote", {}).get("change_percent", -10**9), reverse=True)
     else:
-        results.sort(key=lambda x: x.get("opportunity", {}).get("score", -1), reverse=True)
+        results = [x for x in all_results if x["ranking"]["score"] >= min_score]
+        results.sort(key=lambda x: x["quote"].get("volume", 0) or 0, reverse=True)
+
+    # Safety fallback: if the market currently has no strict matches, return
+    # the strongest candidates for the selected mode instead of a blank screen.
+    # The UI can distinguish these candidates using `filter_match=False`.
+    if not results and all_results:
+        if mode == "golden-cross":
+            results = sorted(all_results, key=lambda x: x["golden_cross"].get("score", -1), reverse=True)
+        elif mode == "breakouts":
+            results = sorted(all_results, key=lambda x: x["breakout"].get("score", -1), reverse=True)
+        elif mode == "volume-surge":
+            results = sorted(all_results, key=lambda x: x.get("_relative_volume", 0), reverse=True)
+        elif mode == "momentum":
+            results = sorted(all_results, key=lambda x: x["momentum"].get("score", -1), reverse=True)
+        elif mode == "liquidity":
+            results = sorted(all_results, key=lambda x: x["advanced_liquidity"].get("score", -1), reverse=True)
+        elif mode == "opportunities":
+            results = sorted(all_results, key=lambda x: x["opportunity"].get("score", -1), reverse=True)
+        else:
+            results = sorted(all_results, key=lambda x: x["ranking"].get("score", -1), reverse=True)
+        for item in results:
+            item["filter_match"] = False
+    else:
+        for item in results:
+            item["filter_match"] = True
+
+    # Keep the internal helper out of the public API response.
+    for item in results:
+        item.pop("_relative_volume", None)
+
     return results[: max(1, min(limit, 100))]
