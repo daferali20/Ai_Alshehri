@@ -11,6 +11,7 @@ SCREENER_MODES = {
     "golden-cross": {},
     "momentum": {"min_score": 60},
     "liquidity": {},
+    "opportunities": {"min_score": 60},
 }
 
 
