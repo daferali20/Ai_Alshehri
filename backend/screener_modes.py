@@ -1,13 +1,16 @@
 from __future__ import annotations
 
+# Signal modes use their own signal/threshold instead of requiring a high
+# composite ranking score first. This prevents valid breakouts and Golden
+# Cross setups from being filtered out prematurely.
 SCREENER_MODES = {
     "top-gainers": {"min_change_percent": 5},
     "most-active": {},
-    "volume-surge": {"min_score": 60},
-    "breakouts": {"min_score": 65},
-    "golden-cross": {"min_score": 65},
+    "volume-surge": {},
+    "breakouts": {},
+    "golden-cross": {},
     "momentum": {"min_score": 60},
-    "liquidity": {"min_score": 60},
+    "liquidity": {},
 }
 
 
