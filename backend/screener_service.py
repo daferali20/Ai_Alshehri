@@ -52,10 +52,18 @@ async def screen_us_stocks(
                 liquidity = analyze_liquidity(rows)
                 advanced_liquidity = analyze_advanced_liquidity(rows)
                 momentum = analyze_momentum(rows)
-                ranking = rank_stock(technical, liquidity, momentum, quote)
-                opportunity = calculate_opportunity(technical, liquidity, momentum, quote)
                 breakout = analyze_breakout(rows)
                 golden_cross = analyze_golden_cross(rows)
+                ranking = rank_stock(technical, liquidity, momentum, quote)
+                opportunity = calculate_opportunity(
+                    technical,
+                    liquidity,
+                    momentum,
+                    quote,
+                    breakout=breakout,
+                    golden_cross=golden_cross,
+                    advanced_liquidity=advanced_liquidity,
+                )
             except (ValueError, TypeError, KeyError, IndexError):
                 return None
 
@@ -79,9 +87,6 @@ async def screen_us_stocks(
     scanned = await asyncio.gather(*(scan(symbol) for symbol in universe), return_exceptions=False)
     all_results = [item for item in scanned if item is not None]
 
-    # Apply the requested mode after the complete scan so that a strict filter
-    # cannot accidentally return an empty page just because the first batch
-    # contained no qualifying symbols.
     results: list[dict[str, Any]]
     if mode == "opportunities":
         results = [x for x in all_results if x["opportunity"]["score"] >= min_score]
@@ -90,9 +95,6 @@ async def screen_us_stocks(
         results = [x for x in all_results if x["breakout"].get("score", 0) > 0]
         results.sort(key=lambda x: x["breakout"].get("score", -1), reverse=True)
     elif mode == "golden-cross":
-        # Include developing setups as well as confirmed crosses. A market may
-        # have no fresh cross today, but there can still be strong SMA50/SMA200
-        # setups worth displaying.
         results = [x for x in all_results if x["golden_cross"].get("score", 0) >= max(min_score, 40)]
         results.sort(key=lambda x: x["golden_cross"].get("score", -1), reverse=True)
     elif mode == "volume-surge":
@@ -111,9 +113,6 @@ async def screen_us_stocks(
         results = [x for x in all_results if x["ranking"]["score"] >= min_score]
         results.sort(key=lambda x: x["quote"].get("volume", 0) or 0, reverse=True)
 
-    # Safety fallback: if the market currently has no strict matches, return
-    # the strongest candidates for the selected mode instead of a blank screen.
-    # The UI can distinguish these candidates using `filter_match=False`.
     if not results and all_results:
         if mode == "golden-cross":
             results = sorted(all_results, key=lambda x: x["golden_cross"].get("score", -1), reverse=True)
@@ -135,7 +134,6 @@ async def screen_us_stocks(
         for item in results:
             item["filter_match"] = True
 
-    # Keep the internal helper out of the public API response.
     for item in results:
         item.pop("_relative_volume", None)
 
