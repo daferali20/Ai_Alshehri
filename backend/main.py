@@ -17,15 +17,12 @@ from .models.models import SubscriptionTier, User, UserSubscription
 from .schemas import LoginRequest, RecommendationRequest, RegisterRequest, TokenResponse
 from .security import create_access_token, decode_access_token, hash_password, verify_password
 from .technical_analysis import analyze_ohlcv
+from .opportunity_engine import calculate_opportunity
 from .screener_api import router as screener_router
 from .news_engine import get_news
 
 app = FastAPI(title=settings.APP_NAME, description='منصة تحليل وتوصيات الأسهم', version=settings.APP_VERSION)
 
-# Public read-only market endpoints are consumed directly by the deployed React app.
-# Keep the explicit frontend origin and also allow the Render preview/custom frontend
-# origins supplied through CORS_ORIGINS. Credentials are enabled for authenticated
-# endpoints; no wildcard origin is used when credentials are enabled.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=list(dict.fromkeys(settings.CORS_ORIGINS + [
@@ -77,8 +74,8 @@ async def login(request:LoginRequest,db:Session=Depends(get_db)):
 async def stock_analysis(symbol:str):
     """Read-only stock analysis endpoint used by the public dashboard."""
     try:
-        quote,history=await asyncio.gather(get_quote(symbol),get_history(symbol,260)); technical=analyze_ohlcv(history) if history else {}; liquidity=analyze_liquidity(history) if history else {}; momentum=analyze_momentum(history) if history else {}; ranking=rank_stock(technical,liquidity,momentum,quote); ai=analyze_stock(technical,liquidity,momentum,ranking,quote); news=get_news(symbol,10)
-        return {'quote':quote,'history':history,'analysis':analyze_quote(quote),'technical':technical,'liquidity':liquidity,'momentum':momentum,'ranking':ranking,'ai_analysis':ai,'news':news}
+        quote,history=await asyncio.gather(get_quote(symbol),get_history(symbol,260)); technical=analyze_ohlcv(history) if history else {}; liquidity=analyze_liquidity(history) if history else {}; momentum=analyze_momentum(history) if history else {}; ranking=rank_stock(technical,liquidity,momentum,quote); opportunity=calculate_opportunity(technical,liquidity,momentum,quote); ai=analyze_stock(technical,liquidity,momentum,ranking,quote); news=get_news(symbol,10)
+        return {'quote':quote,'history':history,'analysis':analyze_quote(quote),'technical':technical,'liquidity':liquidity,'momentum':momentum,'ranking':ranking,'opportunity':opportunity,'ai_analysis':ai,'news':news}
     except MarketDataError as exc: raise HTTPException(502,str(exc)) from exc
 @app.post('/api/v1/recommendations')
 async def recommendations(request:RecommendationRequest,user:User=Depends(current_user),db:Session=Depends(get_db)):
@@ -87,8 +84,8 @@ async def recommendations(request:RecommendationRequest,user:User=Depends(curren
     results=[]
     for symbol in symbols:
         try:
-            quote,history=await asyncio.gather(get_quote(symbol),get_history(symbol,260)); technical=analyze_ohlcv(history) if history else {}; liquidity=analyze_liquidity(history) if history else {}; momentum=analyze_momentum(history) if history else {}; ranking=rank_stock(technical,liquidity,momentum,quote); ai=analyze_stock(technical,liquidity,momentum,ranking,quote); news=get_news(symbol,10)
-            results.append({'symbol':symbol,'quote':quote,'history':history,'technical':technical,'liquidity':liquidity,'momentum':momentum,'ranking':ranking,'ai_analysis':ai,'news':news})
+            quote,history=await asyncio.gather(get_quote(symbol),get_history(symbol,260)); technical=analyze_ohlcv(history) if history else {}; liquidity=analyze_liquidity(history) if history else {}; momentum=analyze_momentum(history) if history else {}; ranking=rank_stock(technical,liquidity,momentum,quote); opportunity=calculate_opportunity(technical,liquidity,momentum,quote); ai=analyze_stock(technical,liquidity,momentum,ranking,quote); news=get_news(symbol,10)
+            results.append({'symbol':symbol,'quote':quote,'history':history,'technical':technical,'liquidity':liquidity,'momentum':momentum,'ranking':ranking,'opportunity':opportunity,'ai_analysis':ai,'news':news})
         except MarketDataError as exc: results.append({'symbol':symbol,'error':str(exc)})
     return {'status':'ok','tier':tier,'results':results}
 if __name__=='__main__':
